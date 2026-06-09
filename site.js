@@ -1,0 +1,424 @@
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getDatabase, ref as realtimeRef, push as realtimePush, serverTimestamp as realtimeServerTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAPHv_ibm0KB025gGCKgsn_biOcokcbS9c",
+  authDomain: "topup-store-2d708.firebaseapp.com",
+  databaseURL: "https://topup-store-2d708-default-rtdb.firebaseio.com",
+  projectId: "topup-store-2d708",
+  storageBucket: "topup-store-2d708.firebasestorage.app",
+  messagingSenderId: "135503745090",
+  appId: "1:135503745090:web:878f62cc297e33be151ddb",
+  measurementId: "G-T81SY3RG3B"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const realtimeDb = getDatabase(app);
+
+export const TopupData = {
+  upiId: "vishnubangaru001@oksbi",
+  paymentQr: "https://www.image2url.com/r2/default/images/1780973417517-83563c52-0ee0-4d1a-9ac1-1ee2c0b0b008.jpg",
+  games: {
+    freefire: { name: "Free Fire", item: "Diamonds", logo: "image/freefire.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
+    bgmi: { name: "BGMI", item: "UC", logo: "image/bgmi.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Firestore order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
+    pubg: { name: "PUBG Mobile", item: "UC", logo: "image/pubg.png", page: "pubg.html", description: "PUBG Mobile UC bundles with a clear payment summary before checkout.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
+    cod: { name: "Call of Duty Mobile", item: "CP", logo: "image/cod.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] }
+  }
+};
+
+let currentUser = undefined;
+let currentProfileCache = null;
+export const authReady = new Promise((resolve) => onAuthStateChanged(auth, (user) => { currentUser = user; resolve(user); }));
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+  currentProfileCache = null;
+  updateHeaderFromAuth();
+});
+
+function withTimeout(promise, message = "Request timed out. Check Firebase setup and internet connection.", ms = 12000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ]);
+}
+
+export function money(amount) { return "INR " + Number(amount).toFixed(2); }
+export function discountPercent(bundle) {
+  return /membership/i.test(bundle?.label || "") ? 1 : 5;
+}
+export function discounted(amount, apply, bundle = null) {
+  if (!apply) return Number(amount);
+  return Number(amount) * (1 - discountPercent(bundle) / 100);
+}
+export function gmailValid(email) { return /^[^\s@]+@gmail\.com$/i.test(email); }
+export function strongPassword(password) { return password.length >= 8 && /[a-z]/.test(password) && /\d/.test(password) && (/[A-Z]/.test(password) || /[^A-Za-z0-9]/.test(password)); }
+
+function authMessage(error) {
+  const code = error?.code || "";
+  if (code === "auth/email-already-in-use") return "This Gmail ID is already registered. Use Login instead.";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") return "Incorrect email or password.";
+  if (code === "auth/user-not-found") return "No account found for this Gmail ID. Create an account first.";
+  if (code === "auth/weak-password") return "Password must be at least 6 characters.";
+  if (code === "auth/operation-not-allowed") return "Enable Email/Password in Firebase Authentication first.";
+  if (code === "permission-denied") return "Firestore permission denied. Publish test rules or proper user rules.";
+  if (code === "auth/network-request-failed") return "Network error. Check your internet connection.";
+  return error?.message || "Firebase request failed.";
+}
+
+export async function ensureUserProfile(user = auth.currentUser) {
+  if (!user) return null;
+  if (currentProfileCache?.uid === user.uid) return currentProfileCache;
+  const ref = doc(db, "users", user.uid);
+  const snap = await withTimeout(getDoc(ref), "Could not load user profile from Firestore.");
+  if (snap.exists()) {
+    currentProfileCache = snap.data();
+    return currentProfileCache;
+  }
+  const username = user.displayName || user.email.split("@")[0];
+  const profile = { uid: user.uid, username, usernameLower: username.toLowerCase(), email: user.email, points: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+  await withTimeout(setDoc(ref, profile), "Could not create user profile in Firestore.");
+  currentProfileCache = { ...profile, createdAt: null, updatedAt: null };
+  return currentProfileCache;
+}
+
+export async function createAccount(username, email, password) {
+  try {
+    const credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), "Signup timed out. Check Email/Password provider.");
+    await updateProfile(credential.user, { displayName: username });
+    setDoc(doc(db, "users", credential.user.uid), {
+      uid: credential.user.uid,
+      username,
+      usernameLower: username.toLowerCase(),
+      email: credential.user.email,
+      points: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }).catch((error) => console.warn("Profile save failed", error));
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: authMessage(error) };
+  }
+}
+
+export async function loginAccount(email, password) {
+  try {
+    const credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), "Login timed out. Check Firebase Authentication.", 6000);
+    ensureUserProfile(credential.user).catch((profileError) => console.warn("Profile load failed", profileError));
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: authMessage(error) };
+  }
+}
+
+export async function logoutAccount() { await signOut(auth); }
+
+export async function resetPassword(email) {
+  try {
+    await withTimeout(sendPasswordResetEmail(auth, email), "Password reset request timed out.");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: authMessage(error) };
+  }
+}
+
+export function showLoading(message = "Loading...") {
+  let loader = document.querySelector("[data-page-loader]");
+  if (!loader) {
+    loader = document.createElement("div");
+    loader.className = "page-loader";
+    loader.dataset.pageLoader = "";
+    loader.innerHTML = `<div class="loader-card"><span class="big-spinner"></span><strong data-loader-message></strong></div>`;
+    document.body.appendChild(loader);
+  }
+  loader.querySelector("[data-loader-message]").textContent = message;
+  loader.classList.add("open");
+}
+
+export function hideLoading() {
+  document.querySelector("[data-page-loader]")?.classList.remove("open");
+}
+
+export async function currentProfile() {
+  await authReady;
+  return ensureUserProfile(auth.currentUser);
+}
+
+export async function currentPoints() {
+  try {
+    const profile = await currentProfile();
+    return profile ? Number(profile.points) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function upiLink(order) {
+  const params = new URLSearchParams({ pa: TopupData.upiId, pn: "Unlimited Topup", tn: `${order.game} | ${order.bundle} | ID:${order.playerId}`, am: Number(order.amount).toFixed(2), cu: "INR" });
+  return "upi://pay?" + params.toString();
+}
+
+function showPaymentPanel(order) {
+  const oldModal = document.querySelector("[data-payment-modal]");
+  if (oldModal) oldModal.remove();
+  const modal = document.createElement("div");
+  modal.className = "modal open payment-modal";
+  modal.dataset.paymentModal = "";
+  modal.innerHTML = `
+    <div class="modal-panel payment-panel">
+      <div class="modal-head">
+        <div>
+          <h2>Complete Payment</h2>
+          <p class="muted">Scan this QR code or open your UPI payment app.</p>
+        </div>
+        <button class="icon-btn" data-close-payment aria-label="Close">x</button>
+      </div>
+      <div class="payment-summary">
+        <img class="payment-qr" src="${TopupData.paymentQr}" alt="Unlimited Topup payment QR code">
+        <div class="payment-details">
+          <span>Payable Amount</span>
+          <strong>${money(order.amount)}</strong>
+          <p>${order.game} - ${order.bundle}</p>
+          <p>Username: ${escapeHtml(order.username)}</p>
+          <p>Game ID: ${order.playerId}</p>
+        </div>
+      </div>
+      <div class="reward-notice">
+        Pay to this QR code. Your reward will be added within 12hr after payment confirmation.
+      </div>
+      <div class="notice" data-payment-status>
+        ${auth.currentUser ? "Saving your order in your profile..." : "Login or sign up to save this order in your profile."}
+      </div>
+      <div class="payment-actions">
+        <a class="link-btn primary full" href="${upiLink(order)}">Pay with UPI App</a>
+        ${auth.currentUser ? "" : '<a class="link-btn full" href="login.html">Login / Sign Up</a>'}
+        <button class="btn ghost full" data-close-payment>Done</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelectorAll("[data-close-payment]").forEach((button) => button.addEventListener("click", () => modal.remove()));
+  return modal;
+}
+
+export async function saveOrder(order) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Please login before placing an order.");
+  let profile = null;
+  try { profile = await ensureUserProfile(user); } catch { profile = { username: user.displayName || user.email }; }
+  const pointsEarned = Math.floor(Number(order.amount) * 4);
+  const firestoreOrder = { ...order, uid: user.uid, accountUsername: profile.username, email: user.email, pointsEarned, status: "pending_payment", createdAt: serverTimestamp() };
+  const realtimeOrder = { ...order, uid: user.uid, accountUsername: profile.username, email: user.email, pointsEarned, status: "pending_payment", createdAt: realtimeServerTimestamp() };
+  const [firestoreResult, realtimeResult] = await withTimeout(Promise.allSettled([
+    addDoc(collection(db, "orders"), firestoreOrder),
+    realtimePush(realtimeRef(realtimeDb, "orders"), realtimeOrder)
+  ]), "Could not save order in Firebase.");
+  if (firestoreResult.status === "rejected" && realtimeResult.status === "rejected") {
+    throw realtimeResult.reason || firestoreResult.reason || new Error("Could not save order in Firebase.");
+  }
+}
+
+async function saveOrderIfLoggedIn(order, modal) {
+  if (!auth.currentUser) return;
+  const status = modal?.querySelector("[data-payment-status]");
+  try {
+    await saveOrder(order);
+    await refreshPoints();
+    if (status) status.textContent = "Order saved in your profile. Complete the payment to receive your reward within 12hr.";
+  } catch (error) {
+    if (status) status.textContent = error.message || "QR is shown, but the order could not be saved in your profile.";
+  }
+}
+
+function navHtml(active) {
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"]];
+  return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
+function profileAvatar(user, label) {
+  const photo = user?.photoURL || "";
+  const initial = (label || user?.email || "U").trim().charAt(0).toUpperCase();
+  if (photo) return `<img class="profile-avatar" src="${escapeHtml(photo)}" alt="${escapeHtml(label)} profile photo" referrerpolicy="no-referrer">`;
+  return `<span class="profile-avatar profile-avatar-fallback" aria-label="${escapeHtml(label)} profile photo">${escapeHtml(initial)}</span>`;
+}
+
+function headerShell(active, authHtml) {
+  return `<div class="page-shell navbar"><a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Firebase connected</span></span></a><nav class="nav-links">${navHtml(active)}</nav><div class="auth-area">${authHtml}</div></div>`;
+}
+
+function bindSignOut(header) {
+  const logout = header.querySelector("[data-logout]");
+  if (logout) logout.addEventListener("click", async () => { await logoutAccount(); window.location.href = "login.html"; });
+}
+
+function authHtmlForUser(user, profile = null) {
+  const label = profile?.username || user.displayName || user.email || "Profile";
+  const email = user.email || "";
+  const points = Number(profile?.points) || 0;
+  return `<div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} pts</span><button class="btn ghost" data-logout>Logout</button>`;
+}
+
+function updateHeaderFromAuth() {
+  const header = document.querySelector("[data-header]");
+  if (!header) return;
+  const active = header.dataset.active || "index";
+  const guest = `<a class="link-btn" href="login.html">Login</a><a class="link-btn primary" href="signup.html">Sign Up</a>`;
+  if (currentUser === undefined) {
+    header.innerHTML = headerShell(active, `<span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span>`);
+    return;
+  }
+  if (!currentUser) {
+    header.innerHTML = headerShell(active, guest);
+    return;
+  }
+  const userForHeader = currentUser;
+  header.innerHTML = headerShell(active, authHtmlForUser(userForHeader));
+  bindSignOut(header);
+  withTimeout(ensureUserProfile(userForHeader), "Profile load skipped.", 5000)
+    .then((profile) => {
+      if (!auth.currentUser || auth.currentUser.uid !== userForHeader.uid) return;
+      header.innerHTML = headerShell(active, authHtmlForUser(userForHeader, profile));
+      bindSignOut(header);
+    })
+    .catch((error) => console.warn("Profile load failed", error));
+}
+
+export function renderHeader(active) {
+  const header = document.querySelector("[data-header]");
+  if (!header) return;
+  header.dataset.active = active;
+  header.innerHTML = headerShell(active, `<span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span>`);
+  updateHeaderFromAuth();
+}
+
+async function requireLogin() {
+  await authReady;
+  if (auth.currentUser) return true;
+  alert("Please login before placing an order.");
+  window.location.href = "login.html";
+  return false;
+}
+
+async function refreshPoints() {
+  const points = await currentPoints();
+  document.querySelectorAll("[data-points]").forEach((node) => { node.textContent = points + " pts"; });
+}
+
+function fillBundleSelect(select, gameKey) {
+  const game = TopupData.games[gameKey];
+  if (!select || select.options.length > 1) return;
+  select.innerHTML = '<option value="">Select a bundle</option>';
+  game.bundles.forEach((bundle, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = `${bundle.label} - ${money(bundle.amount)}`;
+    select.appendChild(option);
+  });
+}
+
+export function initOrderModal() {
+  const modal = document.querySelector("[data-order-modal]");
+  if (!modal) return;
+  const title = modal.querySelector("[data-modal-title]");
+  const username = modal.querySelector("[data-username]");
+  const player = modal.querySelector("[data-player-id]");
+  const phone = modal.querySelector("[data-phone]");
+  const bundle = modal.querySelector("[data-bundle]");
+  const offer = modal.querySelector("[data-offer]");
+  const summary = modal.querySelector("[data-summary]");
+  const pay = modal.querySelector("[data-pay]");
+  if (pay) pay.textContent = "Show QR and Pay";
+  let currentKey = null;
+  const update = () => {
+    if (!currentKey || bundle.value === "") { summary.textContent = "Choose a bundle to see the final amount."; return; }
+    const selected = TopupData.games[currentKey].bundles[Number(bundle.value)];
+    summary.textContent = `${selected.label} | ${offer.checked ? discountPercent(selected) + "% offer applied" : "Standard price"} | Total ${money(discounted(selected.amount, offer.checked, selected))}`;
+  };
+  document.querySelectorAll("[data-open-order]").forEach((button) => button.addEventListener("click", async () => {
+    if (!(await requireLogin())) return;
+    currentKey = button.dataset.openOrder;
+    const game = TopupData.games[currentKey];
+    title.textContent = `Order ${game.name} ${game.item}`;
+    username.value = auth.currentUser?.displayName || ""; player.value = ""; phone.value = ""; offer.checked = true;
+    fillBundleSelect(bundle, currentKey); update(); modal.classList.add("open"); player.focus();
+  }));
+  modal.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => modal.classList.remove("open")));
+  bundle.addEventListener("change", update); offer.addEventListener("change", update);
+  pay.addEventListener("click", async () => {
+    if (!currentKey) return;
+    if (!username.value.trim()) { alert("Please enter your username."); username.focus(); return; }
+    if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (bundle.value === "") { alert("Please select a bundle."); return; }
+    const game = TopupData.games[currentKey];
+    const selected = game.bundles[Number(bundle.value)];
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), phone: phone.value.trim() || "Not provided", amount: discounted(selected.amount, offer.checked, selected) };
+    modal.classList.remove("open");
+    const paymentModal = showPaymentPanel(order);
+    saveOrderIfLoggedIn(order, paymentModal);
+  });
+}
+
+export function initGamePage(gameKey) {
+  const game = TopupData.games[gameKey];
+  if (!game) return;
+  document.querySelectorAll("[data-game-name]").forEach((node) => { node.textContent = game.name; });
+  document.querySelectorAll("[data-game-item]").forEach((node) => { node.textContent = game.item; });
+  document.querySelectorAll("[data-game-logo]").forEach((node) => { node.src = game.logo; node.alt = game.name + " logo"; });
+  document.querySelectorAll("[data-game-description]").forEach((node) => { node.textContent = game.description; });
+  const plans = document.querySelector("[data-plan-grid]");
+  if (plans && !plans.children.length) plans.innerHTML = game.bundles.map((bundle, index) => `<article class="plan-card"><img src="${game.logo}" alt="${game.name} logo"><div><strong>${bundle.label}</strong><span>${money(bundle.amount)}</span></div><button class="btn ghost" data-select-plan="${index}">Select</button></article>`).join("");
+  const form = document.querySelector("[data-game-form]");
+  if (!form) return;
+  const username = form.querySelector("[data-username]");
+  const player = form.querySelector("[data-player-id]");
+  const phone = form.querySelector("[data-phone]");
+  const bundle = form.querySelector("[data-bundle]");
+  const offer = form.querySelector("[data-offer]");
+  const summary = form.querySelector("[data-summary]");
+  const submit = form.querySelector("button[type='submit']");
+  if (submit) submit.textContent = "Show QR and Pay";
+  fillBundleSelect(bundle, gameKey);
+  const update = () => {
+    if (bundle.value === "") { summary.textContent = "Select a bundle to calculate the final payable amount."; return; }
+    const selected = game.bundles[Number(bundle.value)];
+    summary.textContent = `${selected.label} | ${offer.checked ? discountPercent(selected) + "% offer applied" : "Standard price"} | Total ${money(discounted(selected.amount, offer.checked, selected))}`;
+  };
+  bundle.addEventListener("change", update); offer.addEventListener("change", update);
+  document.querySelectorAll("[data-select-plan]").forEach((button) => button.addEventListener("click", () => { bundle.value = button.dataset.selectPlan; update(); form.scrollIntoView({ behavior: "smooth", block: "center" }); }));
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!(await requireLogin())) return;
+    if (!username.value.trim()) { alert("Please enter your username."); username.focus(); return; }
+    if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (bundle.value === "") { alert("Please select a bundle."); return; }
+    const selected = game.bundles[Number(bundle.value)];
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), phone: phone.value.trim() || "Not provided", amount: discounted(selected.amount, offer.checked, selected) };
+    const paymentModal = showPaymentPanel(order);
+    saveOrderIfLoggedIn(order, paymentModal);
+  });
+  update();
+}
+
+export function initRedeem() {
+  const button = document.querySelector("[data-redeem]");
+  if (!button) return;
+  button.addEventListener("click", async () => {
+    if (!(await requireLogin())) return;
+    const profile = await currentProfile();
+    const points = Number(profile?.points) || 0;
+    if (points < 280) { alert(`You have ${points} points. You need 280 points to redeem INR 70 credit.`); return; }
+    const redeem = Math.floor(points / 280) * 280;
+    const credit = (redeem / 280) * 70;
+    if (!confirm(`Redeem ${redeem} points for INR ${credit.toFixed(2)} topup credit?`)) return;
+    await addDoc(collection(db, "redemptions"), { uid: auth.currentUser.uid, username: profile.username, pointsRedeemed: redeem, topupCredit: credit, createdAt: serverTimestamp() });
+    await updateDoc(doc(db, "users", auth.currentUser.uid), { points: increment(-redeem), updatedAt: serverTimestamp() });
+    await refreshPoints();
+    alert("Redemption saved in Firebase.");
+  });
+}

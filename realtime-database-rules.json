@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "orders": {
+      ".read": "auth != null",
+      "$orderId": {
+        ".write": "auth != null && newData.child('uid').val() == auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'username', 'playerId', 'bundle', 'game', 'amount', 'status', 'createdAt'])"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}
