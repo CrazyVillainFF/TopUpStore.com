@@ -3,3 +3,36 @@
 .profile-chip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:rgba(255,255,255,.07);border-radius:8px;padding:7px 10px;color:#e7edf5;max-width:260px}.profile-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;display:inline-grid;place-items:center;flex:0 0 38px;border:2px solid rgba(247,201,72,.72);background:#111b24;color:#10130f}.profile-avatar-fallback{background:linear-gradient(135deg,var(--accent),#31d09f);font-weight:900;font-size:1rem}.profile-copy{min-width:0;display:grid;gap:1px}.profile-copy strong,.profile-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.profile-copy strong{font-size:.88rem}.profile-copy small{color:var(--muted);font-size:.72rem}@media(max-width:620px){.profile-chip{width:100%;max-width:none}.profile-copy{flex:1}}
 .auth-loading{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-weight:800;font-size:.86rem}.mini-spinner,.big-spinner{display:inline-block;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--accent);animation:spin .8s linear infinite}.mini-spinner{width:18px;height:18px}.big-spinner{width:52px;height:52px;border-width:5px}.page-loader{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(5,9,14,.86);backdrop-filter:blur(12px)}.page-loader.open{display:flex}.loader-card{width:min(320px,calc(100% - 32px));border:1px solid var(--line);border-radius:8px;background:#101821;padding:28px;display:grid;place-items:center;gap:16px;box-shadow:var(--shadow);text-align:center}.loader-card strong{font-size:1.05rem;color:#fff3c4}@keyframes spin{to{transform:rotate(360deg)}}
 .payment-actions{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.menu-toggle,.mobile-menu-panel{display:none}
+@media(max-width:920px){
+  .site-header{position:sticky;top:0}
+  .navbar{min-height:68px;position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 0}
+  .menu-toggle{display:inline-grid;width:44px;height:44px;place-items:center;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.07);padding:9px}
+  .menu-toggle span{display:block;width:20px;height:2px;background:#f7f9fb;border-radius:999px}
+  .desktop-nav{display:none}
+  .brand{min-width:0;gap:10px}
+  .brand-mark{width:42px;height:42px;flex:0 0 42px}
+  .brand-text strong{font-size:.95rem;white-space:nowrap}
+  .brand-text span{font-size:.72rem;white-space:nowrap}
+  .auth-area{width:auto;min-width:0;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+  .auth-area .link-btn{min-height:40px;padding:9px 12px;font-size:.88rem}
+  .auth-area .auth-loading{font-size:0}
+  .auth-area .auth-loading .mini-spinner{margin:0}
+  .auth-area .points-pill,.auth-area .btn[data-logout]{display:none}
+  .auth-area .profile-chip{width:auto;max-width:150px;padding:5px 7px;gap:7px}
+  .auth-area .profile-avatar{width:32px;height:32px;flex-basis:32px}
+  .auth-area .profile-copy small{display:none}
+  .auth-area .profile-copy strong{font-size:.78rem}
+  .mobile-menu-panel{position:absolute;display:none;left:0;right:0;top:calc(100% + 1px);z-index:30;border:1px solid var(--line);border-radius:8px;background:rgba(10,16,24,.98);box-shadow:var(--shadow);padding:10px}
+  .menu-open .mobile-menu-panel{display:grid;gap:8px}
+  .mobile-menu-panel a,.menu-logout{display:flex;align-items:center;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid transparent;color:#e7edf5;text-decoration:none;background:rgba(255,255,255,.04);font-weight:800}
+  .mobile-menu-panel a.active{background:rgba(247,201,72,.16);border-color:rgba(247,201,72,.26);color:#fff3c4}
+  .menu-logout{width:100%;justify-content:flex-start;color:#ffd7d7;background:rgba(255,77,77,.08)}
+}
+@media(max-width:520px){
+  .page-shell{width:min(100% - 20px,1180px)}
+  .navbar{grid-template-columns:auto minmax(0,1fr) auto}
+  .brand-text{display:none}
+  .auth-area .link-btn{padding:8px 10px;font-size:.8rem;min-height:38px}
+  .auth-area .profile-chip{max-width:112px}
+}

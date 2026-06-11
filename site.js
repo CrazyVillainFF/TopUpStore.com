@@ -225,6 +225,11 @@ function navHtml(active) {
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
+function menuHtml(active, isLoggedIn = false) {
+  const logout = isLoggedIn ? '<button type="button" class="menu-logout" data-logout>Logout</button>' : "";
+  return `<div class="mobile-menu-panel" data-mobile-menu>${navHtml(active)}${logout}</div>`;
+}
+
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 }
@@ -237,12 +242,29 @@ function profileAvatar(user, label) {
 }
 
 function headerShell(active, authHtml) {
-  return `<div class="page-shell navbar"><a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Supabase connected</span></span></a><nav class="nav-links">${navHtml(active)}</nav><div class="auth-area">${authHtml}</div></div>`;
+  const isLoggedIn = /data-logout/.test(authHtml);
+  return `<div class="page-shell navbar"><button class="menu-toggle" type="button" data-menu-toggle aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button><a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Supabase connected</span></span></a><nav class="nav-links desktop-nav">${navHtml(active)}</nav><div class="auth-area">${authHtml}</div>${menuHtml(active, isLoggedIn)}</div>`;
 }
 
 function bindSignOut(header) {
-  const logout = header.querySelector("[data-logout]");
-  if (logout) logout.addEventListener("click", async () => { await logoutAccount(); window.location.href = "login.html"; });
+  header.querySelectorAll("[data-logout]").forEach((logout) => {
+    logout.addEventListener("click", async () => { await logoutAccount(); window.location.href = "login.html"; });
+  });
+}
+
+function bindMobileMenu(header) {
+  const toggle = header.querySelector("[data-menu-toggle]");
+  const panel = header.querySelector("[data-mobile-menu]");
+  if (!toggle || !panel) return;
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = header.classList.toggle("menu-open");
+    toggle.setAttribute("aria-expanded", String(open));
+  });
+  panel.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => header.classList.remove("menu-open")));
+  document.addEventListener("click", (event) => {
+    if (!header.contains(event.target)) header.classList.remove("menu-open");
+  });
 }
 
 function authHtmlForUser(user, profile = null) {
@@ -259,20 +281,24 @@ function updateHeaderFromAuth() {
   const guest = `<a class="link-btn" href="login.html">Login</a><a class="link-btn primary" href="signup.html">Sign Up</a>`;
   if (currentUser === undefined) {
     header.innerHTML = headerShell(active, `<span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span>`);
+    bindMobileMenu(header);
     return;
   }
   if (!currentUser) {
     header.innerHTML = headerShell(active, guest);
+    bindMobileMenu(header);
     return;
   }
   const userForHeader = currentUser;
   header.innerHTML = headerShell(active, authHtmlForUser(userForHeader));
   bindSignOut(header);
+  bindMobileMenu(header);
   withTimeout(ensureUserProfile(userForHeader), "Profile load skipped.", 5000)
     .then((profile) => {
       if (!auth.currentUser || auth.currentUser.uid !== userForHeader.uid) return;
       header.innerHTML = headerShell(active, authHtmlForUser(userForHeader, profile));
       bindSignOut(header);
+      bindMobileMenu(header);
     })
     .catch((error) => console.warn("Profile load failed", error));
 }
@@ -282,6 +308,7 @@ export function renderHeader(active) {
   if (!header) return;
   header.dataset.active = active;
   header.innerHTML = headerShell(active, `<span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span>`);
+  bindMobileMenu(header);
   updateHeaderFromAuth();
 }
 
