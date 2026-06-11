@@ -1,12 +1,10 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { getDatabase, ref as realtimeRef, push as realtimePush, serverTimestamp as realtimeServerTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPHv_ibm0KB025gGCKgsn_biOcokcbS9c",
   authDomain: "topup-store-2d708.firebaseapp.com",
-  databaseURL: "https://topup-store-2d708-default-rtdb.firebaseio.com",
   projectId: "topup-store-2d708",
   storageBucket: "topup-store-2d708.firebasestorage.app",
   messagingSenderId: "135503745090",
@@ -16,15 +14,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const realtimeDb = getDatabase(app);
+const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const TopupData = {
   upiId: "vishnubangaru001@oksbi",
   paymentQr: "https://www.image2url.com/r2/default/images/1780973417517-83563c52-0ee0-4d1a-9ac1-1ee2c0b0b008.jpg",
   games: {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
-    bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Firestore order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
+    bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     pubg: { name: "PUBG Mobile", item: "UC", logo: "pubg.svg.png", page: "pubg.html", description: "PUBG Mobile UC bundles with a clear payment summary before checkout.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     cod: { name: "Call of Duty Mobile", item: "CP", logo: "cod.svg.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] }
   }
@@ -39,7 +38,7 @@ onAuthStateChanged(auth, async (user) => {
   updateHeaderFromAuth();
 });
 
-function withTimeout(promise, message = "Request timed out. Check Firebase setup and internet connection.", ms = 12000) {
+function withTimeout(promise, message = "Request timed out. Check your setup and internet connection.", ms = 12000) {
   return Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
@@ -64,7 +63,7 @@ function authMessage(error) {
   if (code === "auth/user-not-found") return "No account found for this Gmail ID. Create an account first.";
   if (code === "auth/weak-password") return "Password must be at least 6 characters.";
   if (code === "auth/operation-not-allowed") return "Enable Email/Password in Firebase Authentication first.";
-  if (code === "permission-denied") return "Firestore permission denied. Publish test rules or proper user rules.";
+  if (code === "permission-denied") return "Supabase permission denied. Check table policies.";
   if (code === "auth/network-request-failed") return "Network error. Check your internet connection.";
   return error?.message || "Firebase request failed.";
 }
@@ -72,32 +71,15 @@ function authMessage(error) {
 export async function ensureUserProfile(user = auth.currentUser) {
   if (!user) return null;
   if (currentProfileCache?.uid === user.uid) return currentProfileCache;
-  const ref = doc(db, "users", user.uid);
-  const snap = await withTimeout(getDoc(ref), "Could not load user profile from Firestore.");
-  if (snap.exists()) {
-    currentProfileCache = snap.data();
-    return currentProfileCache;
-  }
   const username = user.displayName || user.email.split("@")[0];
-  const profile = { uid: user.uid, username, usernameLower: username.toLowerCase(), email: user.email, points: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-  await withTimeout(setDoc(ref, profile), "Could not create user profile in Firestore.");
-  currentProfileCache = { ...profile, createdAt: null, updatedAt: null };
+  currentProfileCache = { uid: user.uid, username, email: user.email, points: 0 };
   return currentProfileCache;
 }
-
 export async function createAccount(username, email, password) {
   try {
     const credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), "Signup timed out. Check Email/Password provider.");
     await updateProfile(credential.user, { displayName: username });
-    setDoc(doc(db, "users", credential.user.uid), {
-      uid: credential.user.uid,
-      username,
-      usernameLower: username.toLowerCase(),
-      email: credential.user.email,
-      points: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }).catch((error) => console.warn("Profile save failed", error));
+    currentProfileCache = { uid: credential.user.uid, username, email: credential.user.email, points: 0 };
     return { ok: true };
   } catch (error) {
     return { ok: false, message: authMessage(error) };
@@ -206,18 +188,24 @@ function showPaymentPanel(order) {
 export async function saveOrder(order) {
   const user = auth.currentUser;
   if (!user) throw new Error("Please login before placing an order.");
-  let profile = null;
-  try { profile = await ensureUserProfile(user); } catch { profile = { username: user.displayName || user.email }; }
+  const profile = await ensureUserProfile(user);
   const pointsEarned = Math.floor(Number(order.amount) * 4);
-  const firestoreOrder = { ...order, uid: user.uid, accountUsername: profile.username, email: user.email, pointsEarned, status: "pending_payment", createdAt: serverTimestamp() };
-  const realtimeOrder = { ...order, uid: user.uid, accountUsername: profile.username, email: user.email, pointsEarned, status: "pending_payment", createdAt: realtimeServerTimestamp() };
-  const [firestoreResult, realtimeResult] = await withTimeout(Promise.allSettled([
-    addDoc(collection(db, "orders"), firestoreOrder),
-    realtimePush(realtimeRef(realtimeDb, "orders"), realtimeOrder)
-  ]), "Could not save order in Firebase.");
-  if (firestoreResult.status === "rejected" && realtimeResult.status === "rejected") {
-    throw realtimeResult.reason || firestoreResult.reason || new Error("Could not save order in Firebase.");
-  }
+  const supabaseOrder = {
+    username: order.username,
+    player_id: order.playerId,
+    bundle: order.bundle,
+    game: order.game,
+    item: order.item,
+    phone: order.phone,
+    amount: Number(order.amount),
+    uid: user.uid,
+    account_username: profile.username,
+    email: user.email,
+    points_earned: pointsEarned,
+    status: "pending_payment"
+  };
+  const { error } = await withTimeout(supabase.from("orders").insert(supabaseOrder), "Could not save order in Supabase.");
+  if (error) throw new Error(error.message || "Could not save order in Supabase.");
 }
 
 async function saveOrderIfLoggedIn(order, modal) {
@@ -226,7 +214,7 @@ async function saveOrderIfLoggedIn(order, modal) {
   try {
     await saveOrder(order);
     await refreshPoints();
-    if (status) status.textContent = "Order saved in your profile. Complete the payment to receive your reward within 12hr.";
+    if (status) status.textContent = "Order saved in Supabase. Complete the payment to receive your reward within 12hr.";
   } catch (error) {
     if (status) status.textContent = error.message || "QR is shown, but the order could not be saved in your profile.";
   }
@@ -249,7 +237,7 @@ function profileAvatar(user, label) {
 }
 
 function headerShell(active, authHtml) {
-  return `<div class="page-shell navbar"><a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Firebase connected</span></span></a><nav class="nav-links">${navHtml(active)}</nav><div class="auth-area">${authHtml}</div></div>`;
+  return `<div class="page-shell navbar"><a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Supabase connected</span></span></a><nav class="nav-links">${navHtml(active)}</nav><div class="auth-area">${authHtml}</div></div>`;
 }
 
 function bindSignOut(header) {
@@ -408,17 +396,7 @@ export function initGamePage(gameKey) {
 export function initRedeem() {
   const button = document.querySelector("[data-redeem]");
   if (!button) return;
-  button.addEventListener("click", async () => {
-    if (!(await requireLogin())) return;
-    const profile = await currentProfile();
-    const points = Number(profile?.points) || 0;
-    if (points < 280) { alert(`You have ${points} points. You need 280 points to redeem INR 70 credit.`); return; }
-    const redeem = Math.floor(points / 280) * 280;
-    const credit = (redeem / 280) * 70;
-    if (!confirm(`Redeem ${redeem} points for INR ${credit.toFixed(2)} topup credit?`)) return;
-    await addDoc(collection(db, "redemptions"), { uid: auth.currentUser.uid, username: profile.username, pointsRedeemed: redeem, topupCredit: credit, createdAt: serverTimestamp() });
-    await updateDoc(doc(db, "users", auth.currentUser.uid), { points: increment(-redeem), updatedAt: serverTimestamp() });
-    await refreshPoints();
-    alert("Redemption saved in Firebase.");
+  button.addEventListener("click", () => {
+    alert("Reward redeem will be enabled after Supabase points rules are configured.");
   });
 }
