@@ -54,6 +54,7 @@ export function discounted(amount, apply, bundle = null) {
   return Number(amount) * (1 - discountPercent(bundle) / 100);
 }
 export function gmailValid(email) { return /^[^\s@]+@gmail\.com$/i.test(email); }
+export function emailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(email); }
 export function strongPassword(password) { return password.length >= 8 && /[a-z]/.test(password) && /\d/.test(password) && (/[A-Z]/.test(password) || /[^A-Za-z0-9]/.test(password)); }
 
 function authMessage(error) {
@@ -164,8 +165,9 @@ function showPaymentPanel(order) {
           <span>Payable Amount</span>
           <strong>${money(order.amount)}</strong>
           <p>${order.game} - ${order.bundle}</p>
-          <p>Username: ${escapeHtml(order.username)}</p>
+          <p>Game ID Name: ${escapeHtml(order.username)}</p>
           <p>Game ID: ${order.playerId}</p>
+          <p>Email: ${escapeHtml(order.customerEmail)}</p>
         </div>
       </div>
       <div class="reward-notice">
@@ -196,7 +198,7 @@ export async function saveOrder(order) {
     bundle: order.bundle,
     game: order.game,
     item: order.item,
-    phone: order.phone,
+    customer_email: order.customerEmail,
     amount: Number(order.amount),
     uid: user.uid,
     account_username: profile.username,
@@ -343,7 +345,7 @@ export function initOrderModal() {
   const title = modal.querySelector("[data-modal-title]");
   const username = modal.querySelector("[data-username]");
   const player = modal.querySelector("[data-player-id]");
-  const phone = modal.querySelector("[data-phone]");
+  const customerEmail = modal.querySelector("[data-customer-email]");
   const bundle = modal.querySelector("[data-bundle]");
   const offer = modal.querySelector("[data-offer]");
   const summary = modal.querySelector("[data-summary]");
@@ -360,19 +362,20 @@ export function initOrderModal() {
     currentKey = button.dataset.openOrder;
     const game = TopupData.games[currentKey];
     title.textContent = `Order ${game.name} ${game.item}`;
-    username.value = auth.currentUser?.displayName || ""; player.value = ""; phone.value = ""; offer.checked = true;
+    username.value = auth.currentUser?.displayName || ""; player.value = ""; customerEmail.value = auth.currentUser?.email || ""; offer.checked = true;
     fillBundleSelect(bundle, currentKey); update(); modal.classList.add("open"); player.focus();
   }));
   modal.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => modal.classList.remove("open")));
   bundle.addEventListener("change", update); offer.addEventListener("change", update);
   pay.addEventListener("click", async () => {
     if (!currentKey) return;
-    if (!username.value.trim()) { alert("Please enter your username."); username.focus(); return; }
+    if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
     if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
     const game = TopupData.games[currentKey];
     const selected = game.bundles[Number(bundle.value)];
-    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), phone: phone.value.trim() || "Not provided", amount: discounted(selected.amount, offer.checked, selected) };
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, offer.checked, selected) };
     modal.classList.remove("open");
     const paymentModal = showPaymentPanel(order);
     saveOrderIfLoggedIn(order, paymentModal);
@@ -392,7 +395,7 @@ export function initGamePage(gameKey) {
   if (!form) return;
   const username = form.querySelector("[data-username]");
   const player = form.querySelector("[data-player-id]");
-  const phone = form.querySelector("[data-phone]");
+  const customerEmail = form.querySelector("[data-customer-email]");
   const bundle = form.querySelector("[data-bundle]");
   const offer = form.querySelector("[data-offer]");
   const summary = form.querySelector("[data-summary]");
@@ -409,11 +412,13 @@ export function initGamePage(gameKey) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!(await requireLogin())) return;
-    if (!username.value.trim()) { alert("Please enter your username."); username.focus(); return; }
+    if (customerEmail && !customerEmail.value.trim()) customerEmail.value = auth.currentUser?.email || "";
+    if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
     if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
     const selected = game.bundles[Number(bundle.value)];
-    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), phone: phone.value.trim() || "Not provided", amount: discounted(selected.amount, offer.checked, selected) };
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, offer.checked, selected) };
     const paymentModal = showPaymentPanel(order);
     saveOrderIfLoggedIn(order, paymentModal);
   });

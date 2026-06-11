@@ -8,7 +8,7 @@ create table if not exists public.orders (
   bundle text not null,
   game text not null,
   item text,
-  phone text,
+  customer_email text,
   amount numeric(10,2) not null,
   uid text,
   account_username text,
@@ -17,6 +17,9 @@ create table if not exists public.orders (
   status text default 'pending_payment',
   created_at timestamptz default now()
 );
+
+alter table public.orders
+add column if not exists customer_email text;
 
 alter table public.orders enable row level security;
 
@@ -28,6 +31,7 @@ to anon, authenticated
 with check (
   username is not null
   and player_id is not null
+  and customer_email is not null
   and bundle is not null
   and game is not null
   and amount is not null

@@ -36,3 +36,5 @@
   .auth-area .link-btn{padding:8px 10px;font-size:.8rem;min-height:38px}
   .auth-area .profile-chip{max-width:112px}
 }
+
+.field-help{display:block;margin-top:6px;color:var(--muted);font-size:.78rem;line-height:1.45;font-weight:600}
