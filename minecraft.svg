@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Minecraft Minecoins">
+  <rect width="256" height="256" rx="32" fill="#2f8f46"/>
+  <path fill="#53b85f" d="M24 72h208v128H24z"/>
+  <path fill="#8f5a2f" d="M24 144h208v56H24z"/>
+  <path fill="#6f421f" d="M24 176h208v24H24z"/>
+  <path fill="#1f5f32" d="M24 72h40v32h32V72h48v40h32V72h56v56h-40v32h-48v-32h-32v40H64v-40H24z"/>
+  <circle cx="128" cy="130" r="54" fill="#f5c542"/>
+  <circle cx="128" cy="130" r="38" fill="#ffe27a"/>
+  <path fill="#b37a19" d="M116 95h24v18h20v23h-20v29h-24v-29H96v-23h20z"/>
+  <path fill="#111820" opacity=".18" d="M24 200h208v16c0 8.8-7.2 16-16 16H40c-8.8 0-16-7.2-16-16z"/>
+</svg>

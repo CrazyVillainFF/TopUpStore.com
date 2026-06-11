@@ -1,10 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPHv_ibm0KB025gGCKgsn_biOcokcbS9c",
   authDomain: "topup-store-2d708.firebaseapp.com",
+  databaseURL: "https://topup-store-2d708-default-rtdb.firebaseio.com",
   projectId: "topup-store-2d708",
   storageBucket: "topup-store-2d708.firebasestorage.app",
   messagingSenderId: "135503745090",
@@ -14,6 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const database = getDatabase(app);
 const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -25,7 +28,8 @@ export const TopupData = {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
     bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     pubg: { name: "PUBG Mobile", item: "UC", logo: "pubg.svg.png", page: "pubg.html", description: "PUBG Mobile UC bundles with a clear payment summary before checkout.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
-    cod: { name: "Call of Duty Mobile", item: "CP", logo: "cod.svg.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] }
+    cod: { name: "Call of Duty Mobile", item: "CP", logo: "cod.svg.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] },
+    minecraft: { name: "Minecraft", item: "Minecoins", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg", page: "minecraft.html", description: "Minecraft Minecoins packs with simple checkout. No game ID number required.", noGameId: true, bundles: [{ label: "1720 Minecoins", amount: 680, originalAmount: 735 }, { label: "3500 Minecoins", amount: 1389, originalAmount: 1457 }] }
   }
 };
 
@@ -47,9 +51,11 @@ function withTimeout(promise, message = "Request timed out. Check your setup and
 
 export function money(amount) { return "INR " + Number(amount).toFixed(2); }
 export function discountPercent(bundle) {
+  if (bundle?.originalAmount) return ((Number(bundle.originalAmount) - Number(bundle.amount)) / Number(bundle.originalAmount)) * 100;
   return /membership/i.test(bundle?.label || "") ? 1 : 5;
 }
 export function discounted(amount, apply, bundle = null) {
+  if (bundle?.originalAmount) return Number(bundle.amount);
   if (!apply) return Number(amount);
   return Number(amount) * (1 - discountPercent(bundle) / 100);
 }
@@ -140,7 +146,8 @@ export async function currentPoints() {
 }
 
 export function upiLink(order) {
-  const params = new URLSearchParams({ pa: TopupData.upiId, pn: "Unlimited Topup", tn: `${order.game} | ${order.bundle} | ID:${order.playerId}`, am: Number(order.amount).toFixed(2), cu: "INR" });
+  const idText = order.playerId ? ` | ID:${order.playerId}` : "";
+  const params = new URLSearchParams({ pa: TopupData.upiId, pn: "Unlimited Topup", tn: `${order.game} | ${order.bundle}${idText}`, am: Number(order.amount).toFixed(2), cu: "INR" });
   return "upi://pay?" + params.toString();
 }
 
@@ -166,7 +173,7 @@ function showPaymentPanel(order) {
           <strong>${money(order.amount)}</strong>
           <p>${order.game} - ${order.bundle}</p>
           <p>Game ID Name: ${escapeHtml(order.username)}</p>
-          <p>Game ID: ${order.playerId}</p>
+          ${order.playerId ? `<p>Game ID: ${escapeHtml(order.playerId)}</p>` : ""}
           <p>Email: ${escapeHtml(order.customerEmail)}</p>
         </div>
       </div>
@@ -208,6 +215,21 @@ export async function saveOrder(order) {
   };
   const { error } = await withTimeout(supabase.from("orders").insert(supabaseOrder), "Could not save order in Supabase.");
   if (error) throw new Error(error.message || "Could not save order in Supabase.");
+  await withTimeout(push(ref(database, "orders"), {
+    uid: user.uid,
+    accountUsername: profile.username,
+    accountEmail: user.email,
+    game: order.game,
+    item: order.item,
+    bundle: order.bundle,
+    username: order.username,
+    playerId: order.playerId || "",
+    customerEmail: order.customerEmail,
+    amount: Number(order.amount),
+    pointsEarned,
+    status: "pending_payment",
+    createdAt: serverTimestamp()
+  }), "Could not save order in Firebase Realtime Database.");
 }
 
 async function saveOrderIfLoggedIn(order, modal) {
@@ -216,14 +238,14 @@ async function saveOrderIfLoggedIn(order, modal) {
   try {
     await saveOrder(order);
     await refreshPoints();
-    if (status) status.textContent = "Order saved in Supabase. Complete the payment to receive your reward within 12hr.";
+    if (status) status.textContent = "Order saved in Supabase and Firebase. Complete the payment to receive your reward within 12hr.";
   } catch (error) {
     if (status) status.textContent = error.message || "QR is shown, but the order could not be saved in your profile.";
   }
 }
 
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -334,9 +356,16 @@ function fillBundleSelect(select, gameKey) {
   game.bundles.forEach((bundle, index) => {
     const option = document.createElement("option");
     option.value = String(index);
-    option.textContent = `${bundle.label} - ${money(bundle.amount)}`;
+    option.textContent = `${bundle.label} - ${bundle.originalAmount ? money(bundle.originalAmount) + " -> " : ""}${money(bundle.amount)}`;
     select.appendChild(option);
   });
+}
+
+function bundleSummary(bundle, apply) {
+  const finalAmount = discounted(bundle.amount, apply, bundle);
+  const offer = bundle.originalAmount ? `${discountPercent(bundle).toFixed(2)}% Minecraft offer` : apply ? `${discountPercent(bundle)}% offer applied` : "Standard price";
+  const original = bundle.originalAmount ? ` | Original ${money(bundle.originalAmount)}` : "";
+  return `${bundle.label}${original} | ${offer} | Total ${money(finalAmount)}`;
 }
 
 export function initOrderModal() {
@@ -354,8 +383,9 @@ export function initOrderModal() {
   let currentKey = null;
   const update = () => {
     if (!currentKey || bundle.value === "") { summary.textContent = "Choose a bundle to see the final amount."; return; }
-    const selected = TopupData.games[currentKey].bundles[Number(bundle.value)];
-    summary.textContent = `${selected.label} | ${offer.checked ? discountPercent(selected) + "% offer applied" : "Standard price"} | Total ${money(discounted(selected.amount, offer.checked, selected))}`;
+    const game = TopupData.games[currentKey];
+    const selected = game.bundles[Number(bundle.value)];
+    summary.textContent = bundleSummary(selected, game.noGameId ? true : offer.checked);
   };
   document.querySelectorAll("[data-open-order]").forEach((button) => button.addEventListener("click", async () => {
     if (!(await requireLogin())) return;
@@ -363,19 +393,23 @@ export function initOrderModal() {
     const game = TopupData.games[currentKey];
     title.textContent = `Order ${game.name} ${game.item}`;
     username.value = auth.currentUser?.displayName || ""; player.value = ""; customerEmail.value = auth.currentUser?.email || ""; offer.checked = true;
-    fillBundleSelect(bundle, currentKey); update(); modal.classList.add("open"); player.focus();
+    player.closest("label").style.display = game.noGameId ? "none" : "";
+    player.required = !game.noGameId;
+    offer.closest("label").style.display = game.noGameId ? "none" : "";
+    fillBundleSelect(bundle, currentKey); update(); modal.classList.add("open");
+    (game.noGameId ? username : player).focus();
   }));
   modal.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => modal.classList.remove("open")));
   bundle.addEventListener("change", update); offer.addEventListener("change", update);
   pay.addEventListener("click", async () => {
     if (!currentKey) return;
+    const game = TopupData.games[currentKey];
     if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
-    if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (!game.noGameId && !player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
     if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
-    const game = TopupData.games[currentKey];
     const selected = game.bundles[Number(bundle.value)];
-    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, offer.checked, selected) };
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: game.noGameId ? "" : player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, game.noGameId ? true : offer.checked, selected) };
     modal.classList.remove("open");
     const paymentModal = showPaymentPanel(order);
     saveOrderIfLoggedIn(order, paymentModal);
@@ -390,7 +424,7 @@ export function initGamePage(gameKey) {
   document.querySelectorAll("[data-game-logo]").forEach((node) => { node.src = game.logo; node.alt = game.name + " logo"; });
   document.querySelectorAll("[data-game-description]").forEach((node) => { node.textContent = game.description; });
   const plans = document.querySelector("[data-plan-grid]");
-  if (plans && !plans.children.length) plans.innerHTML = game.bundles.map((bundle, index) => `<article class="plan-card"><img src="${game.logo}" alt="${game.name} logo"><div><strong>${bundle.label}</strong><span>${money(bundle.amount)}</span></div><button class="btn ghost" data-select-plan="${index}">Select</button></article>`).join("");
+  if (plans && !plans.children.length) plans.innerHTML = game.bundles.map((bundle, index) => `<article class="plan-card"><img src="${game.logo}" alt="${game.name} logo"><div><strong>${bundle.label}</strong><span>${bundle.originalAmount ? `<s>${money(bundle.originalAmount)}</s> ` : ""}${money(bundle.amount)}</span>${bundle.originalAmount ? `<small class="field-help">${discountPercent(bundle).toFixed(2)}% Minecraft offer</small>` : ""}</div><button class="btn ghost" data-select-plan="${index}">Select</button></article>`).join("");
   const form = document.querySelector("[data-game-form]");
   if (!form) return;
   const username = form.querySelector("[data-username]");
@@ -401,11 +435,16 @@ export function initGamePage(gameKey) {
   const summary = form.querySelector("[data-summary]");
   const submit = form.querySelector("button[type='submit']");
   if (submit) submit.textContent = "Show QR and Pay";
+  if (game.noGameId && player) {
+    player.closest("label").style.display = "none";
+    player.required = false;
+  }
+  if (game.noGameId && offer) offer.closest("label").style.display = "none";
   fillBundleSelect(bundle, gameKey);
   const update = () => {
     if (bundle.value === "") { summary.textContent = "Select a bundle to calculate the final payable amount."; return; }
     const selected = game.bundles[Number(bundle.value)];
-    summary.textContent = `${selected.label} | ${offer.checked ? discountPercent(selected) + "% offer applied" : "Standard price"} | Total ${money(discounted(selected.amount, offer.checked, selected))}`;
+    summary.textContent = bundleSummary(selected, game.noGameId ? true : offer.checked);
   };
   bundle.addEventListener("change", update); offer.addEventListener("change", update);
   document.querySelectorAll("[data-select-plan]").forEach((button) => button.addEventListener("click", () => { bundle.value = button.dataset.selectPlan; update(); form.scrollIntoView({ behavior: "smooth", block: "center" }); }));
@@ -414,11 +453,11 @@ export function initGamePage(gameKey) {
     if (!(await requireLogin())) return;
     if (customerEmail && !customerEmail.value.trim()) customerEmail.value = auth.currentUser?.email || "";
     if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
-    if (!player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
+    if (!game.noGameId && !player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
     if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
     const selected = game.bundles[Number(bundle.value)];
-    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, offer.checked, selected) };
+    const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: game.noGameId ? "" : player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, game.noGameId ? true : offer.checked, selected) };
     const paymentModal = showPaymentPanel(order);
     saveOrderIfLoggedIn(order, paymentModal);
   });
