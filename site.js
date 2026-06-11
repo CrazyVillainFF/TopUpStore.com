@@ -147,11 +147,20 @@ export async function currentPoints() {
 
 export function upiLink(order) {
   const idText = order.playerId ? ` | ID:${order.playerId}` : "";
-  const params = new URLSearchParams({ pa: TopupData.upiId, pn: "Unlimited Topup", tn: `${order.game} | ${order.bundle}${idText}`, am: Number(order.amount).toFixed(2), cu: "INR" });
+  const orderRef = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const params = new URLSearchParams({
+    pa: TopupData.upiId,
+    pn: "Unlimited Topup",
+    tr: orderRef,
+    tn: `${order.game} ${order.bundle}${idText}`.slice(0, 70),
+    am: Number(order.amount).toFixed(2),
+    cu: "INR"
+  });
   return "upi://pay?" + params.toString();
 }
 
 function showPaymentPanel(order) {
+  order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const oldModal = document.querySelector("[data-payment-modal]");
   if (oldModal) oldModal.remove();
   const modal = document.createElement("div");
@@ -180,17 +189,29 @@ function showPaymentPanel(order) {
       <div class="reward-notice">
         Pay to this QR code. Your reward will be added within 12hr after payment confirmation.
       </div>
+      <div class="notice">
+        If your UPI app shows a limit message, scan the QR code or copy the UPI ID and pay manually from another UPI app.
+      </div>
       <div class="notice" data-payment-status>
         ${auth.currentUser ? "Saving your order in your profile..." : "Login or sign up to save this order in your profile."}
       </div>
       <div class="payment-actions">
         <a class="link-btn primary full" href="${upiLink(order)}">Pay with UPI App</a>
+        <button class="btn full" type="button" data-copy-upi>Copy UPI ID</button>
         ${auth.currentUser ? "" : '<a class="link-btn full" href="login.html">Login / Sign Up</a>'}
         <button class="btn ghost full" data-close-payment>Done</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelectorAll("[data-close-payment]").forEach((button) => button.addEventListener("click", () => modal.remove()));
+  modal.querySelector("[data-copy-upi]")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(TopupData.upiId);
+      modal.querySelector("[data-copy-upi]").textContent = "UPI ID Copied";
+    } catch {
+      alert("UPI ID: " + TopupData.upiId);
+    }
+  });
   return modal;
 }
 
@@ -199,6 +220,7 @@ export async function saveOrder(order) {
   if (!user) throw new Error("Please login before placing an order.");
   const profile = await ensureUserProfile(user);
   const pointsEarned = Math.floor(Number(order.amount) * 4);
+  order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const supabaseOrder = {
     username: order.username,
     player_id: order.playerId,
@@ -211,6 +233,7 @@ export async function saveOrder(order) {
     account_username: profile.username,
     email: user.email,
     points_earned: pointsEarned,
+    payment_reference: order.reference,
     status: "pending_payment"
   };
   const { error } = await withTimeout(supabase.from("orders").insert(supabaseOrder), "Could not save order in Supabase.");
@@ -227,6 +250,7 @@ export async function saveOrder(order) {
     customerEmail: order.customerEmail,
     amount: Number(order.amount),
     pointsEarned,
+    paymentReference: order.reference,
     status: "pending_payment",
     createdAt: serverTimestamp()
   }), "Could not save order in Firebase Realtime Database.");

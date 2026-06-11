@@ -11,12 +11,16 @@ create table if not exists public.orders (
   account_username text,
   email text,
   points_earned integer default 0,
+  payment_reference text,
   status text default 'pending_payment',
   created_at timestamptz default now()
 );
 
 alter table public.orders
 add column if not exists customer_email text;
+
+alter table public.orders
+add column if not exists payment_reference text;
 
 alter table public.orders
 alter column player_id set default '';
