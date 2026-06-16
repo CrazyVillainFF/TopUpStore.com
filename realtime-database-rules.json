@@ -3,8 +3,8 @@
     "orders": {
       ".read": "auth != null && (auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
       "$orderId": {
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid && newData.child('status').val() == 'Pending Verification') || (data.exists() && (auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')))",
-        ".validate": "newData.hasChildren(['uid', 'username', 'bundle', 'game', 'amount', 'utr', 'screenshotUrl', 'status', 'createdAt'])"
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || (data.exists() && (data.child('uid').val() == auth.uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')))",
+        ".validate": "newData.hasChildren(['uid', 'username', 'bundle', 'game', 'amount', 'utr', 'status', 'createdAt'])"
       }
     },
     "users": {

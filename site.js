@@ -1,7 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -18,7 +17,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
-export const storage = getStorage(app);
 const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -26,6 +24,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const TopupData = {
   upiId: "7667107386@ptyes",
   paymentQr: "payment-qr.jpg",
+  cloudinaryCloudName: "dbctbgoum",
+  cloudinaryUploadPreset: "UnlimitedTopUpo",
   adminEmails: ["unlimitedtopup001@gmail.com", "vishnubangaru001@gmail.com"],
   games: {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
@@ -132,6 +132,21 @@ export function showLoading(message = "Loading...") {
 
 export function hideLoading() {
   document.querySelector("[data-page-loader]")?.classList.remove("open");
+}
+
+async function uploadPaymentScreenshot(file, orderId) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", TopupData.cloudinaryUploadPreset);
+  formData.append("folder", "payment-screenshots");
+  formData.append("public_id", `${orderId}-${Date.now()}`);
+  const response = await withTimeout(fetch(`https://api.cloudinary.com/v1_1/${TopupData.cloudinaryCloudName}/image/upload`, {
+    method: "POST",
+    body: formData
+  }), "Could not upload payment screenshot to Cloudinary.", 25000);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || "Cloudinary screenshot upload failed.");
+  return data.secure_url;
 }
 
 export async function currentProfile() {
@@ -243,11 +258,8 @@ export async function saveOrder(order) {
   const profile = await ensureUserProfile(user);
   const pointsEarned = Math.floor(Number(order.amount) * 4);
   order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const safeFileName = order.screenshot.name.replace(/[^a-z0-9._-]/gi, "_");
-  const shotRef = storageRef(storage, `payment-screenshots/${user.uid}/${order.reference}-${safeFileName}`);
-  await withTimeout(uploadBytes(shotRef, order.screenshot), "Could not upload payment screenshot.", 20000);
-  const screenshotUrl = await withTimeout(getDownloadURL(shotRef), "Could not get screenshot link.");
-  await withTimeout(push(dbRef(database, "orders"), {
+  const orderRef = push(dbRef(database, "orders"));
+  const baseOrder = {
     uid: user.uid,
     accountUsername: profile.username,
     accountEmail: user.email,
@@ -259,12 +271,20 @@ export async function saveOrder(order) {
     customerEmail: order.customerEmail,
     amount: Number(order.amount),
     utr: order.utr,
-    screenshotUrl,
+    screenshotUrl: "",
+    screenshotStatus: "Uploading",
     pointsEarned,
     paymentReference: order.reference,
     status: "Pending Verification",
     createdAt: serverTimestamp()
-  }), "Could not save order in Firebase Realtime Database.");
+  };
+  await withTimeout(set(orderRef, baseOrder), "Could not save order in Firebase Realtime Database.");
+  const screenshotUrl = await uploadPaymentScreenshot(order.screenshot, orderRef.key);
+  await withTimeout(update(orderRef, {
+    screenshotUrl,
+    screenshotStatus: "Uploaded",
+    updatedAt: serverTimestamp()
+  }), "Could not save screenshot link in Firebase Realtime Database.");
 }
 
 function navHtml(active) {
