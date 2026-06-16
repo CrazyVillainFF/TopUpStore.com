@@ -22,8 +22,8 @@ const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const TopupData = {
-  upiId: "vishnubangaru001@oksbi",
-  paymentQr: "https://www.image2url.com/r2/default/images/1780973417517-83563c52-0ee0-4d1a-9ac1-1ee2c0b0b008.jpg",
+  upiId: "7667107386@ptyes",
+  paymentQr: "payment-qr.jpg",
   games: {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
     bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
@@ -159,6 +159,10 @@ export function upiLink(order) {
   return "upi://pay?" + params.toString();
 }
 
+function qrLink(order) {
+  return "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + encodeURIComponent(upiLink(order));
+}
+
 function showPaymentPanel(order) {
   order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const oldModal = document.querySelector("[data-payment-modal]");
@@ -176,7 +180,7 @@ function showPaymentPanel(order) {
         <button class="icon-btn" data-close-payment aria-label="Close">x</button>
       </div>
       <div class="payment-summary">
-        <img class="payment-qr" src="${TopupData.paymentQr}" alt="Unlimited Topup payment QR code">
+        <img class="payment-qr" src="${TopupData.paymentQr || qrLink(order)}" alt="Unlimited Topup payment QR code">
         <div class="payment-details">
           <span>Payable Amount</span>
           <strong>${money(order.amount)}</strong>
