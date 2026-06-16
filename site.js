@@ -1,6 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
+export const storage = getStorage(app);
 const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -24,6 +26,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const TopupData = {
   upiId: "7667107386@ptyes",
   paymentQr: "payment-qr.jpg",
+  adminEmails: ["unlimitedtopup001@gmail.com", "vishnubangaru001@gmail.com"],
   games: {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
     bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
@@ -145,24 +148,6 @@ export async function currentPoints() {
   }
 }
 
-export function upiLink(order) {
-  const idText = order.playerId ? ` | ID:${order.playerId}` : "";
-  const orderRef = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const params = new URLSearchParams({
-    pa: TopupData.upiId,
-    pn: "Unlimited Topup",
-    tr: orderRef,
-    tn: `${order.game} ${order.bundle}${idText}`.slice(0, 70),
-    am: Number(order.amount).toFixed(2),
-    cu: "INR"
-  });
-  return "upi://pay?" + params.toString();
-}
-
-function qrLink(order) {
-  return "https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=" + encodeURIComponent(upiLink(order));
-}
-
 function showPaymentPanel(order) {
   order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const oldModal = document.querySelector("[data-payment-modal]");
@@ -175,12 +160,12 @@ function showPaymentPanel(order) {
       <div class="modal-head">
         <div>
           <h2>Complete Payment</h2>
-          <p class="muted">Scan this QR code or open your UPI payment app.</p>
+          <p class="muted">Pay manually, then submit your UTR number and payment screenshot.</p>
         </div>
         <button class="icon-btn" data-close-payment aria-label="Close">x</button>
       </div>
       <div class="payment-summary">
-        <img class="payment-qr" src="${TopupData.paymentQr || qrLink(order)}" alt="Unlimited Topup payment QR code">
+        <img class="payment-qr" src="${TopupData.paymentQr}" alt="Unlimited Topup payment QR code">
         <div class="payment-details">
           <span>Payable Amount</span>
           <strong>${money(order.amount)}</strong>
@@ -191,29 +176,60 @@ function showPaymentPanel(order) {
         </div>
       </div>
       <div class="reward-notice">
-        Pay to this QR code. Your reward will be added within 12hr after payment confirmation.
+        Pay manually using GPay / PhonePe / Paytm to this UPI ID: <span class="upi-id">${escapeHtml(TopupData.upiId)}</span>
       </div>
       <div class="notice">
-        If your UPI app shows a limit message, scan the QR code or copy the UPI ID and pay manually from another UPI app.
+        After payment, enter your UPI Transaction ID / UTR number and upload the payment screenshot. Your order status will be Pending Verification.
       </div>
-      <div class="notice" data-payment-status>
-        ${auth.currentUser ? "Saving your order in your profile..." : "Login or sign up to save this order in your profile."}
-      </div>
-      <div class="payment-actions">
-        <a class="link-btn primary full" href="${upiLink(order)}">Pay with UPI App</a>
-        <button class="btn full" type="button" data-copy-upi>Copy UPI ID</button>
+      <form class="manual-payment-form form-grid" data-manual-payment-form>
+        <label>Player ID<input value="${escapeHtml(order.playerId || "Not required")}" readonly></label>
+        <label>Player Name<input value="${escapeHtml(order.username)}" readonly></label>
+        <label>Game<input value="${escapeHtml(order.game)}" readonly></label>
+        <label>Product / Package<input value="${escapeHtml(order.bundle)}" readonly></label>
+        <label>Amount<input value="${money(order.amount)}" readonly></label>
+        <label>UPI Transaction ID / UTR number<input data-utr placeholder="Enter UTR number" minlength="6" required></label>
+        <label class="full">Payment screenshot upload<input data-screenshot type="file" accept="image/*" required></label>
+        <div class="notice full" data-payment-status>
+          ${auth.currentUser ? "Submit after payment. Your order will be saved for admin verification." : "Login or sign up to submit this order."}
+        </div>
+        <button class="btn success full" type="submit">Submit Payment Proof</button>
         ${auth.currentUser ? "" : '<a class="link-btn full" href="login.html">Login / Sign Up</a>'}
-        <button class="btn ghost full" data-close-payment>Done</button>
-      </div>
+        <button class="btn ghost full" type="button" data-close-payment>Close</button>
+      </form>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelectorAll("[data-close-payment]").forEach((button) => button.addEventListener("click", () => modal.remove()));
-  modal.querySelector("[data-copy-upi]")?.addEventListener("click", async () => {
+  modal.querySelector("[data-manual-payment-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const status = modal.querySelector("[data-payment-status]");
+    const submit = form.querySelector("button[type='submit']");
+    const utr = form.querySelector("[data-utr]").value.trim();
+    const screenshot = form.querySelector("[data-screenshot]").files[0];
+    if (!auth.currentUser) {
+      window.location.href = "login.html";
+      return;
+    }
+    if (!utr) {
+      alert("Please enter UPI Transaction ID / UTR number.");
+      return;
+    }
+    if (!screenshot) {
+      alert("Please upload payment screenshot.");
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = "Submitting...";
+    status.textContent = "Uploading screenshot and saving order...";
     try {
-      await navigator.clipboard.writeText(TopupData.upiId);
-      modal.querySelector("[data-copy-upi]").textContent = "UPI ID Copied";
-    } catch {
-      alert("UPI ID: " + TopupData.upiId);
+      await saveOrder({ ...order, utr, screenshot });
+      await refreshPoints();
+      status.textContent = "Order submitted. Status: Pending Verification. Admin will verify your payment.";
+      submit.textContent = "Submitted";
+    } catch (error) {
+      status.textContent = error.message || "Could not submit order. Please try again.";
+      submit.disabled = false;
+      submit.textContent = "Submit Payment Proof";
     }
   });
   return modal;
@@ -222,27 +238,16 @@ function showPaymentPanel(order) {
 export async function saveOrder(order) {
   const user = auth.currentUser;
   if (!user) throw new Error("Please login before placing an order.");
+  if (!order.utr) throw new Error("Please enter UPI Transaction ID / UTR number.");
+  if (!order.screenshot) throw new Error("Please upload payment screenshot.");
   const profile = await ensureUserProfile(user);
   const pointsEarned = Math.floor(Number(order.amount) * 4);
   order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const supabaseOrder = {
-    username: order.username,
-    player_id: order.playerId,
-    bundle: order.bundle,
-    game: order.game,
-    item: order.item,
-    customer_email: order.customerEmail,
-    amount: Number(order.amount),
-    uid: user.uid,
-    account_username: profile.username,
-    email: user.email,
-    points_earned: pointsEarned,
-    payment_reference: order.reference,
-    status: "pending_payment"
-  };
-  const { error } = await withTimeout(supabase.from("orders").insert(supabaseOrder), "Could not save order in Supabase.");
-  if (error) throw new Error(error.message || "Could not save order in Supabase.");
-  await withTimeout(push(ref(database, "orders"), {
+  const safeFileName = order.screenshot.name.replace(/[^a-z0-9._-]/gi, "_");
+  const shotRef = storageRef(storage, `payment-screenshots/${user.uid}/${order.reference}-${safeFileName}`);
+  await withTimeout(uploadBytes(shotRef, order.screenshot), "Could not upload payment screenshot.", 20000);
+  const screenshotUrl = await withTimeout(getDownloadURL(shotRef), "Could not get screenshot link.");
+  await withTimeout(push(dbRef(database, "orders"), {
     uid: user.uid,
     accountUsername: profile.username,
     accountEmail: user.email,
@@ -253,27 +258,17 @@ export async function saveOrder(order) {
     playerId: order.playerId || "",
     customerEmail: order.customerEmail,
     amount: Number(order.amount),
+    utr: order.utr,
+    screenshotUrl,
     pointsEarned,
     paymentReference: order.reference,
-    status: "pending_payment",
+    status: "Pending Verification",
     createdAt: serverTimestamp()
   }), "Could not save order in Firebase Realtime Database.");
 }
 
-async function saveOrderIfLoggedIn(order, modal) {
-  if (!auth.currentUser) return;
-  const status = modal?.querySelector("[data-payment-status]");
-  try {
-    await saveOrder(order);
-    await refreshPoints();
-    if (status) status.textContent = "Order saved in Supabase and Firebase. Complete the payment to receive your reward within 12hr.";
-  } catch (error) {
-    if (status) status.textContent = error.message || "QR is shown, but the order could not be saved in your profile.";
-  }
-}
-
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"], ["admin", "Admin", "admin.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -407,7 +402,7 @@ export function initOrderModal() {
   const offer = modal.querySelector("[data-offer]");
   const summary = modal.querySelector("[data-summary]");
   const pay = modal.querySelector("[data-pay]");
-  if (pay) pay.textContent = "Show QR and Pay";
+  if (pay) pay.textContent = "Continue to Manual Payment";
   let currentKey = null;
   const update = () => {
     if (!currentKey || bundle.value === "") { summary.textContent = "Choose a bundle to see the final amount."; return; }
@@ -439,8 +434,7 @@ export function initOrderModal() {
     const selected = game.bundles[Number(bundle.value)];
     const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: game.noGameId ? "" : player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, game.noGameId ? true : offer.checked, selected) };
     modal.classList.remove("open");
-    const paymentModal = showPaymentPanel(order);
-    saveOrderIfLoggedIn(order, paymentModal);
+    showPaymentPanel(order);
   });
 }
 
@@ -462,7 +456,7 @@ export function initGamePage(gameKey) {
   const offer = form.querySelector("[data-offer]");
   const summary = form.querySelector("[data-summary]");
   const submit = form.querySelector("button[type='submit']");
-  if (submit) submit.textContent = "Show QR and Pay";
+  if (submit) submit.textContent = "Continue to Manual Payment";
   if (game.noGameId && player) {
     player.closest("label").style.display = "none";
     player.required = false;
@@ -486,8 +480,7 @@ export function initGamePage(gameKey) {
     if (bundle.value === "") { alert("Please select a bundle."); return; }
     const selected = game.bundles[Number(bundle.value)];
     const order = { username: username.value.trim(), game: game.name, item: game.item, bundle: selected.label, playerId: game.noGameId ? "" : player.value.trim(), customerEmail: customerEmail.value.trim(), amount: discounted(selected.amount, game.noGameId ? true : offer.checked, selected) };
-    const paymentModal = showPaymentPanel(order);
-    saveOrderIfLoggedIn(order, paymentModal);
+    showPaymentPanel(order);
   });
   update();
 }
@@ -499,3 +492,66 @@ export function initRedeem() {
     alert("Reward redeem will be enabled after Supabase points rules are configured.");
   });
 }
+
+export async function initAdminPage() {
+  const body = document.querySelector("[data-admin-orders]");
+  const notice = document.querySelector("[data-admin-notice]");
+  if (!body) return;
+  await authReady;
+  const user = auth.currentUser;
+  const email = (user?.email || "").toLowerCase();
+  if (!user) {
+    notice.textContent = "Please login with admin Gmail to view orders.";
+    body.innerHTML = "";
+    return;
+  }
+  if (!TopupData.adminEmails.includes(email)) {
+    notice.textContent = "This account is not allowed to open admin orders.";
+    body.innerHTML = "";
+    return;
+  }
+  notice.textContent = "Loading orders...";
+  const statuses = ["Pending Verification", "Payment Verified", "Completed", "Rejected"];
+  onValue(dbRef(database, "orders"), (snapshot) => {
+    const orders = [];
+    snapshot.forEach((child) => orders.push({ id: child.key, ...child.val() }));
+    orders.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    notice.textContent = orders.length ? `${orders.length} orders found.` : "No orders found.";
+    body.innerHTML = orders.map((order) => `
+      <tr>
+        <td>${escapeHtml(order.playerId || "Not required")}</td>
+        <td>${escapeHtml(order.username || "")}</td>
+        <td>${escapeHtml(order.game || "")}</td>
+        <td>${escapeHtml(order.bundle || "")}</td>
+        <td>${money(order.amount || 0)}</td>
+        <td>${escapeHtml(order.utr || "")}</td>
+        <td>${order.screenshotUrl ? `<a href="${escapeHtml(order.screenshotUrl)}" target="_blank" rel="noopener">View Screenshot</a>` : "No screenshot"}</td>
+        <td>
+          <select data-admin-status="${escapeHtml(order.id)}">
+            ${statuses.map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
+          </select>
+        </td>
+      </tr>
+    `).join("");
+    body.querySelectorAll("[data-admin-status]").forEach((select) => {
+      select.addEventListener("change", async () => {
+        select.disabled = true;
+        const orderId = select.dataset.adminStatus;
+        try {
+          await update(dbRef(database, `orders/${orderId}`), {
+            status: select.value,
+            updatedAt: serverTimestamp(),
+            updatedBy: email
+          });
+        } catch (error) {
+          alert(error.message || "Could not update order status.");
+        } finally {
+          select.disabled = false;
+        }
+      });
+    });
+  }, (error) => {
+    notice.textContent = error.message || "Could not load orders.";
+  });
+}
+
