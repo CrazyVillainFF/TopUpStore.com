@@ -1,7 +1,7 @@
 {
   "rules": {
     "orders": {
-      ".read": "auth != null && ((auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com') || (query.orderByChild == 'uid' && query.equalTo == auth.uid) || (query.orderByChild == 'accountEmail' && query.equalTo == auth.token.email))",
+      ".read": "auth != null",
       ".write": "auth != null",
       ".indexOn": ["uid", "accountEmail"]
     },

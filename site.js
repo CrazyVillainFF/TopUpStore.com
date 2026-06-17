@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -611,7 +611,7 @@ async function showYourOrdersModal() {
       <div class="modal-head">
         <div>
           <h2>Your Orders</h2>
-          <p class="muted">Only orders from your logged-in account are shown here.</p>
+          <p class="muted">Orders connected to your logged-in account or email are shown here.</p>
         </div>
         <button class="icon-btn" data-close-orders aria-label="Close">x</button>
       </div>
@@ -622,11 +622,18 @@ async function showYourOrdersModal() {
   document.body.appendChild(modal);
   modal.querySelector("[data-close-orders]").addEventListener("click", () => modal.remove());
   const list = modal.querySelector("[data-your-orders-list]");
-  const ownOrders = query(dbRef(database, "orders"), orderByChild("uid"), equalTo(auth.currentUser.uid));
-  const emailOrders = query(dbRef(database, "orders"), orderByChild("accountEmail"), equalTo(auth.currentUser.email || ""));
-  const orderMap = new Map();
-  const renderOrders = () => {
-    const orders = Array.from(orderMap.values());
+  const currentUid = auth.currentUser.uid;
+  const currentEmail = (auth.currentUser.email || "").toLowerCase();
+  onValue(dbRef(database, "orders"), (snapshot) => {
+    const orders = [];
+    snapshot.forEach((child) => {
+      const order = { id: child.key, ...child.val() };
+      const accountEmail = String(order.accountEmail || "").toLowerCase();
+      const customerEmail = String(order.customerEmail || "").toLowerCase();
+      if (order.uid === currentUid || accountEmail === currentEmail || customerEmail === currentEmail) {
+        orders.push(order);
+      }
+    });
     orders.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
     if (!orders.length) {
       list.innerHTML = '<div class="notice">No orders yet.</div>';
@@ -642,15 +649,7 @@ async function showYourOrdersModal() {
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
       </article>
     `).join("");
-  };
-  const addSnapshotOrders = (snapshot) => {
-    snapshot.forEach((child) => orderMap.set(child.key, { id: child.key, ...child.val() }));
-    renderOrders();
-  };
-  onValue(ownOrders, addSnapshotOrders, (error) => {
-    list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
-  });
-  onValue(emailOrders, addSnapshotOrders, (error) => {
+  }, (error) => {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
 }
