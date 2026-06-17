@@ -1,14 +1,13 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPHv_ibm0KB025gGCKgsn_biOcokcbS9c",
   authDomain: "topup-store-2d708.firebaseapp.com",
-  databaseURL: "https://topup-store-2d708-default-rtdb.firebaseio.com",
+  databaseURL: "https://topup-store-2d708-default-rtdb.asia-southeast1.firebasedatabase.app/",
   projectId: "topup-store-2d708",
-  storageBucket: "topup-store-2d708.firebasestorage.app",
   messagingSenderId: "135503745090",
   appId: "1:135503745090:web:878f62cc297e33be151ddb",
   measurementId: "G-T81SY3RG3B"
@@ -16,6 +15,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 export const database = getDatabase(app);
 const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
@@ -73,9 +74,30 @@ function authMessage(error) {
   if (code === "auth/user-not-found") return "No account found for this Gmail ID. Create an account first.";
   if (code === "auth/weak-password") return "Password must be at least 6 characters.";
   if (code === "auth/operation-not-allowed") return "Enable Email/Password in Firebase Authentication first.";
+  if (code === "auth/popup-closed-by-user") return "Google sign-in was closed before finishing.";
+  if (code === "auth/popup-blocked") return "Browser blocked Google sign-in popup. Allow popups and try again.";
+  if (code === "auth/account-exists-with-different-credential") return "This email is already linked with another sign-in method.";
   if (code === "permission-denied") return "Supabase permission denied. Check table policies.";
   if (code === "auth/network-request-failed") return "Network error. Check your internet connection.";
   return error?.message || "Firebase request failed.";
+}
+
+function readableOrderError(error) {
+  const message = error?.message || "";
+  const code = error?.code || "";
+  if (code === "PERMISSION_DENIED" || /permission_denied|permission denied/i.test(message)) {
+    return "Realtime Database blocked this order. Open Firebase Realtime Database > Rules and publish the rules from realtime-database-rules.json.";
+  }
+  if (/database.*not found|not found/i.test(message)) {
+    return "Realtime Database URL is wrong or database is not created. Check your Firebase Realtime Database URL.";
+  }
+  if (/cloudinary|upload preset|preset/i.test(message)) {
+    return "Cloudinary upload failed. Check cloud name dbctbgoum and unsigned upload preset UnlimitedTopUpo.";
+  }
+  if (/failed to fetch|network/i.test(message)) {
+    return "Upload failed because internet/network request was blocked. Try again after checking connection.";
+  }
+  return message || "Could not submit order. Please try again.";
 }
 
 export async function ensureUserProfile(user = auth.currentUser) {
@@ -100,6 +122,16 @@ export async function loginAccount(email, password) {
   try {
     const credential = await withTimeout(signInWithEmailAndPassword(auth, email, password), "Login timed out. Check Firebase Authentication.", 6000);
     ensureUserProfile(credential.user).catch((profileError) => console.warn("Profile load failed", profileError));
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: authMessage(error) };
+  }
+}
+
+export async function loginWithGoogle() {
+  try {
+    const credential = await withTimeout(signInWithPopup(auth, googleProvider), "Google sign-in timed out. Try again.", 15000);
+    await ensureUserProfile(credential.user);
     return { ok: true };
   } catch (error) {
     return { ok: false, message: authMessage(error) };
@@ -135,6 +167,9 @@ export function hideLoading() {
 }
 
 async function uploadPaymentScreenshot(file, orderId) {
+  if (!TopupData.cloudinaryCloudName || !TopupData.cloudinaryUploadPreset) {
+    throw new Error("Cloudinary setup is missing.");
+  }
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", TopupData.cloudinaryUploadPreset);
@@ -242,7 +277,8 @@ function showPaymentPanel(order) {
       status.textContent = "Order submitted. Status: Pending Verification. Admin will verify your payment.";
       submit.textContent = "Submitted";
     } catch (error) {
-      status.textContent = error.message || "Could not submit order. Please try again.";
+      console.error("Payment proof submit failed", error);
+      status.textContent = readableOrderError(error);
       submit.disabled = false;
       submit.textContent = "Submit Payment Proof";
     }
@@ -278,13 +314,26 @@ export async function saveOrder(order) {
     status: "Pending Verification",
     createdAt: serverTimestamp()
   };
-  await withTimeout(set(orderRef, baseOrder), "Could not save order in Firebase Realtime Database.");
-  const screenshotUrl = await uploadPaymentScreenshot(order.screenshot, orderRef.key);
-  await withTimeout(update(orderRef, {
-    screenshotUrl,
-    screenshotStatus: "Uploaded",
-    updatedAt: serverTimestamp()
-  }), "Could not save screenshot link in Firebase Realtime Database.");
+  try {
+    await withTimeout(set(orderRef, baseOrder), "Could not save order in Firebase Realtime Database.");
+  } catch (error) {
+    throw new Error(readableOrderError(error));
+  }
+  try {
+    const screenshotUrl = await uploadPaymentScreenshot(order.screenshot, orderRef.key);
+    await withTimeout(update(orderRef, {
+      screenshotUrl,
+      screenshotStatus: "Uploaded",
+      updatedAt: serverTimestamp()
+    }), "Could not save screenshot link in Firebase Realtime Database.");
+  } catch (error) {
+    await update(orderRef, {
+      screenshotStatus: "Upload Failed",
+      screenshotError: readableOrderError(error),
+      updatedAt: serverTimestamp()
+    }).catch(() => {});
+    throw new Error(readableOrderError(error));
+  }
 }
 
 function navHtml(active) {

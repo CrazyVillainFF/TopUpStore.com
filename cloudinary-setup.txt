@@ -6,6 +6,12 @@ dbctbgoum
 Unsigned upload preset:
 UnlimitedTopUpo
 
+Required Cloudinary setting:
+The upload preset must be Unsigned.
+
 Firebase Storage is not used anymore.
 Orders are still saved in Firebase Realtime Database.
 The payment screenshot link is saved in each order as screenshotUrl.
+
+If upload still fails, open Cloudinary > Settings > Upload > Upload presets and check that the preset name is exactly:
+UnlimitedTopUpo
