@@ -623,9 +623,10 @@ async function showYourOrdersModal() {
   modal.querySelector("[data-close-orders]").addEventListener("click", () => modal.remove());
   const list = modal.querySelector("[data-your-orders-list]");
   const ownOrders = query(dbRef(database, "orders"), orderByChild("uid"), equalTo(auth.currentUser.uid));
-  onValue(ownOrders, (snapshot) => {
-    const orders = [];
-    snapshot.forEach((child) => orders.push({ id: child.key, ...child.val() }));
+  const emailOrders = query(dbRef(database, "orders"), orderByChild("accountEmail"), equalTo(auth.currentUser.email || ""));
+  const orderMap = new Map();
+  const renderOrders = () => {
+    const orders = Array.from(orderMap.values());
     orders.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
     if (!orders.length) {
       list.innerHTML = '<div class="notice">No orders yet.</div>';
@@ -641,7 +642,15 @@ async function showYourOrdersModal() {
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
       </article>
     `).join("");
-  }, (error) => {
+  };
+  const addSnapshotOrders = (snapshot) => {
+    snapshot.forEach((child) => orderMap.set(child.key, { id: child.key, ...child.val() }));
+    renderOrders();
+  };
+  onValue(ownOrders, addSnapshotOrders, (error) => {
+    list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
+  });
+  onValue(emailOrders, addSnapshotOrders, (error) => {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
 }
