@@ -8,7 +8,7 @@
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
       }
     }
   }

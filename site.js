@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -18,6 +18,7 @@ export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 export const database = getDatabase(app);
+const POINTS_PER_RUPEE = 1 / 20;
 const supabaseUrl = "https://lacvojqavgsrrgftergg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhY3ZvanFhdmdzcnJnZnRlcmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMzcyMjcsImV4cCI6MjA5NjcxMzIyN30.rjLVEPIjMAkc2zT3_0569oO5oXw-KZ0sdPb5aYvgpJM";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -104,13 +105,31 @@ export async function ensureUserProfile(user = auth.currentUser) {
   if (!user) return null;
   if (currentProfileCache?.uid === user.uid) return currentProfileCache;
   const username = user.displayName || user.email.split("@")[0];
-  currentProfileCache = { uid: user.uid, username, email: user.email, points: 0 };
+  const userRef = dbRef(database, `users/${user.uid}`);
+  const snapshot = await get(userRef).catch(() => null);
+  const saved = snapshot?.exists() ? snapshot.val() : {};
+  const points = Number(saved?.points) || 0;
+  currentProfileCache = { uid: user.uid, username: saved?.username || username, email: saved?.email || user.email, points };
+  if (!snapshot?.exists()) {
+    await set(userRef, {
+      username,
+      email: user.email,
+      points: 0,
+      createdAt: serverTimestamp()
+    }).catch(() => {});
+  }
   return currentProfileCache;
 }
 export async function createAccount(username, email, password) {
   try {
     const credential = await withTimeout(createUserWithEmailAndPassword(auth, email, password), "Signup timed out. Check Email/Password provider.");
     await updateProfile(credential.user, { displayName: username });
+    await set(dbRef(database, `users/${credential.user.uid}`), {
+      username,
+      email: credential.user.email,
+      points: 0,
+      createdAt: serverTimestamp()
+    }).catch(() => {});
     currentProfileCache = { uid: credential.user.uid, username, email: credential.user.email, points: 0 };
     return { ok: true };
   } catch (error) {
@@ -191,8 +210,10 @@ export async function currentProfile() {
 
 export async function currentPoints() {
   try {
-    const profile = await currentProfile();
-    return profile ? Number(profile.points) || 0 : 0;
+    await authReady;
+    if (!auth.currentUser) return 0;
+    const snapshot = await get(dbRef(database, `users/${auth.currentUser.uid}/points`));
+    return snapshot.exists() ? Number(snapshot.val()) || 0 : 0;
   } catch {
     return 0;
   }
@@ -292,7 +313,7 @@ export async function saveOrder(order) {
   if (!order.utr) throw new Error("Please enter UPI Transaction ID / UTR number.");
   if (!order.screenshot) throw new Error("Please upload payment screenshot.");
   const profile = await ensureUserProfile(user);
-  const pointsEarned = Math.floor(Number(order.amount) * 4);
+  const pointsEarned = Math.floor(Number(order.amount) * POINTS_PER_RUPEE);
   order.reference = order.reference || `UT${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const orderRef = push(dbRef(database, "orders"));
   const baseOrder = {
@@ -595,6 +616,26 @@ function statusClass(status) {
   return String(status || "Pending Verification").toLowerCase().replace(/[^a-z]+/g, "-");
 }
 
+async function recalculateUserPoints(uid) {
+  if (!uid) return;
+  const snapshot = await get(dbRef(database, "orders"));
+  let total = 0;
+  snapshot.forEach((child) => {
+    const order = child.val();
+    if (order?.uid === uid && order?.status === "Completed") {
+      total += Number(order.pointsEarned) || Math.floor(Number(order.amount || 0) * POINTS_PER_RUPEE);
+    }
+  });
+  await update(dbRef(database, `users/${uid}`), {
+    points: total,
+    pointsUpdatedAt: serverTimestamp()
+  });
+  if (auth.currentUser?.uid === uid) {
+    currentProfileCache = null;
+    await refreshPoints();
+  }
+}
+
 async function showYourOrdersModal() {
   await authReady;
   if (!auth.currentUser) {
@@ -644,7 +685,7 @@ async function showYourOrdersModal() {
         <div>
           <strong>${escapeHtml(order.game || "")} - ${escapeHtml(order.bundle || "")}</strong>
           <span>${money(order.amount || 0)} | ${escapeHtml(order.playerId || "No game ID required")}</span>
-          <small>UTR: ${escapeHtml(order.utr || "")}</small>
+          <small>UTR: ${escapeHtml(order.utr || "")} | Points: ${Number(order.pointsEarned) || 0}</small>
         </div>
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
       </article>
@@ -699,11 +740,16 @@ export async function initAdminPage() {
         select.disabled = true;
         const orderId = select.dataset.adminStatus;
         try {
+          const newStatus = select.value;
           await update(dbRef(database, `orders/${orderId}`), {
-            status: select.value,
+            status: newStatus,
             updatedAt: serverTimestamp(),
             updatedBy: email
           });
+          const order = orders.find((item) => item.id === orderId);
+          if (order?.uid && (newStatus === "Completed" || order.status === "Completed")) {
+            await recalculateUserPoints(order.uid);
+          }
         } catch (error) {
           alert(error.message || "Could not update order status.");
         } finally {
