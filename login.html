@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260617-google-redirect">
+  <link rel="stylesheet" href="styles.css?v=20260617-google-popup-only">
 </head>
 <body>
   <main class="auth-page">
@@ -51,12 +51,11 @@
       auth,
       loginAccount,
       loginWithGoogle,
-      finishGoogleRedirectLogin,
       logoutAccount,
       gmailValid,
       showLoading,
       hideLoading
-    } from './site.js?v=20260617-google-redirect';
+    } from './site.js?v=20260617-google-popup-only';
 
     const notice = document.getElementById('loggedInNotice');
     const form = document.getElementById('loginForm');
@@ -64,18 +63,11 @@
     const btn = document.getElementById('loginBtn');
     const googleBtn = document.getElementById('googleBtn');
 
-    const redirectResult = await finishGoogleRedirectLogin();
-    if (!redirectResult.ok) {
-      error.textContent = redirectResult.message;
-    }
-
     await authReady;
 
     if (auth.currentUser) {
-      if (redirectResult.signedIn) {
-        showLoading('Opening your profile...');
-        window.location.href = 'index.html';
-      }
+      showLoading('Opening your profile...');
+      window.location.replace('index.html');
       notice.style.display = 'block';
       notice.innerHTML = 'Already signed in as <strong>' + auth.currentUser.email + '</strong>. <button class="btn ghost" id="signOutBtn" type="button">Sign Out</button>';
     }
@@ -100,7 +92,8 @@
         return;
       }
 
-      showLoading('Redirecting to Google...');
+      showLoading('Opening your profile...');
+      window.location.replace('index.html');
     });
 
     form.addEventListener('submit', async (event) => {
@@ -128,7 +121,7 @@
       }
 
       showLoading('Opening your profile...');
-      window.location.href = 'index.html';
+      window.location.replace('index.html');
     });
   </script>
 </body>
