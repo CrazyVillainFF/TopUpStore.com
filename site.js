@@ -1,5 +1,5 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -130,9 +130,21 @@ export async function loginAccount(email, password) {
 
 export async function loginWithGoogle() {
   try {
-    const credential = await withTimeout(signInWithPopup(auth, googleProvider), "Google sign-in timed out. Try again.", 15000);
-    await ensureUserProfile(credential.user);
-    return { ok: true };
+    await signInWithRedirect(auth, googleProvider);
+    return { ok: true, redirecting: true };
+  } catch (error) {
+    return { ok: false, message: authMessage(error) };
+  }
+}
+
+export async function finishGoogleRedirectLogin() {
+  try {
+    const credential = await getRedirectResult(auth);
+    if (credential?.user) {
+      await ensureUserProfile(credential.user);
+      return { ok: true, signedIn: true };
+    }
+    return { ok: true, signedIn: false };
   } catch (error) {
     return { ok: false, message: authMessage(error) };
   }
