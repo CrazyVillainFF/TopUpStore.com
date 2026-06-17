@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -274,8 +274,8 @@ function showPaymentPanel(order) {
     try {
       await saveOrder({ ...order, utr, screenshot });
       await refreshPoints();
-      status.textContent = "Order submitted. Status: Pending Verification. Admin will verify your payment.";
-      submit.textContent = "Submitted";
+      modal.remove();
+      showOrderSubmittedPopup();
     } catch (error) {
       console.error("Payment proof submit failed", error);
       status.textContent = readableOrderError(error);
@@ -337,13 +337,14 @@ export async function saveOrder(order) {
 }
 
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"], ["admin", "Admin", "admin.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
 function menuHtml(active, isLoggedIn = false) {
+  const orders = isLoggedIn ? '<button type="button" class="menu-orders" data-your-orders>Your Orders</button>' : "";
   const logout = isLoggedIn ? '<button type="button" class="menu-logout" data-logout>Logout</button>' : "";
-  return `<div class="mobile-menu-panel" data-mobile-menu>${navHtml(active)}${logout}</div>`;
+  return `<div class="mobile-menu-panel" data-mobile-menu>${navHtml(active)}${orders}${logout}</div>`;
 }
 
 function escapeHtml(value) {
@@ -368,6 +369,12 @@ function bindSignOut(header) {
   });
 }
 
+function bindYourOrders(header) {
+  header.querySelectorAll("[data-your-orders]").forEach((button) => {
+    button.addEventListener("click", () => showYourOrdersModal());
+  });
+}
+
 function bindMobileMenu(header) {
   const toggle = header.querySelector("[data-menu-toggle]");
   const panel = header.querySelector("[data-mobile-menu]");
@@ -387,7 +394,7 @@ function authHtmlForUser(user, profile = null) {
   const label = profile?.username || user.displayName || user.email || "Profile";
   const email = user.email || "";
   const points = Number(profile?.points) || 0;
-  return `<div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} pts</span><button class="btn ghost" data-logout>Logout</button>`;
+  return `<button class="btn ghost orders-btn" type="button" data-your-orders>Your Orders</button><div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} pts</span><button class="btn ghost" data-logout>Logout</button>`;
 }
 
 function updateHeaderFromAuth() {
@@ -408,12 +415,14 @@ function updateHeaderFromAuth() {
   const userForHeader = currentUser;
   header.innerHTML = headerShell(active, authHtmlForUser(userForHeader));
   bindSignOut(header);
+  bindYourOrders(header);
   bindMobileMenu(header);
   withTimeout(ensureUserProfile(userForHeader), "Profile load skipped.", 5000)
     .then((profile) => {
       if (!auth.currentUser || auth.currentUser.uid !== userForHeader.uid) return;
       header.innerHTML = headerShell(active, authHtmlForUser(userForHeader, profile));
       bindSignOut(header);
+      bindYourOrders(header);
       bindMobileMenu(header);
     })
     .catch((error) => console.warn("Profile load failed", error));
@@ -559,6 +568,81 @@ export function initRedeem() {
   if (!button) return;
   button.addEventListener("click", () => {
     alert("Reward redeem will be enabled after Supabase points rules are configured.");
+  });
+}
+
+function showOrderSubmittedPopup() {
+  const modal = document.createElement("div");
+  modal.className = "modal open";
+  modal.dataset.orderSubmitted = "";
+  modal.innerHTML = `
+    <div class="modal-panel success-panel">
+      <div class="success-icon">✓</div>
+      <h2>Order Submitted</h2>
+      <p class="muted">Your order status is Pending Verification. We will verify your payment proof and process your topup.</p>
+      <button class="btn success full" type="button" data-your-orders>View Your Orders</button>
+      <button class="btn ghost full" type="button" data-close-success>Close</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector("[data-close-success]").addEventListener("click", () => modal.remove());
+  modal.querySelector("[data-your-orders]").addEventListener("click", () => {
+    modal.remove();
+    showYourOrdersModal();
+  });
+}
+
+function statusClass(status) {
+  return String(status || "Pending Verification").toLowerCase().replace(/[^a-z]+/g, "-");
+}
+
+async function showYourOrdersModal() {
+  await authReady;
+  if (!auth.currentUser) {
+    window.location.href = "login.html";
+    return;
+  }
+  const oldModal = document.querySelector("[data-your-orders-modal]");
+  if (oldModal) oldModal.remove();
+  const modal = document.createElement("div");
+  modal.className = "modal open";
+  modal.dataset.yourOrdersModal = "";
+  modal.innerHTML = `
+    <div class="modal-panel orders-panel">
+      <div class="modal-head">
+        <div>
+          <h2>Your Orders</h2>
+          <p class="muted">Only orders from your logged-in account are shown here.</p>
+        </div>
+        <button class="icon-btn" data-close-orders aria-label="Close">x</button>
+      </div>
+      <div class="orders-list" data-your-orders-list>
+        <div class="notice">Loading your orders...</div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector("[data-close-orders]").addEventListener("click", () => modal.remove());
+  const list = modal.querySelector("[data-your-orders-list]");
+  const ownOrders = query(dbRef(database, "orders"), orderByChild("uid"), equalTo(auth.currentUser.uid));
+  onValue(ownOrders, (snapshot) => {
+    const orders = [];
+    snapshot.forEach((child) => orders.push({ id: child.key, ...child.val() }));
+    orders.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    if (!orders.length) {
+      list.innerHTML = '<div class="notice">No orders yet.</div>';
+      return;
+    }
+    list.innerHTML = orders.map((order) => `
+      <article class="user-order-card">
+        <div>
+          <strong>${escapeHtml(order.game || "")} - ${escapeHtml(order.bundle || "")}</strong>
+          <span>${money(order.amount || 0)} | ${escapeHtml(order.playerId || "No game ID required")}</span>
+          <small>UTR: ${escapeHtml(order.utr || "")}</small>
+        </div>
+        <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
+      </article>
+    `).join("");
+  }, (error) => {
+    list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
 }
 
