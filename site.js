@@ -735,19 +735,23 @@ export function initRedeem() {
     modal.querySelector("[data-back-redeem]").addEventListener("click", () => { confirmStep.hidden = true; formStep.hidden = false; });
     modal.querySelector("[data-submit-redeem]").addEventListener("click", async (event) => {
       const submit = event.currentTarget;
+      if (!auth.currentUser || !selected) {
+        error.textContent = "Your login session or reward selection is missing. Please close this window and try again.";
+        return;
+      }
       submit.disabled = true;
       submit.textContent = "Submitting...";
       error.textContent = "";
       const pointsRef = dbRef(database, `users/${auth.currentUser.uid}/points`);
       try {
-        const result = await runTransaction(pointsRef, (points) => {
+        const result = await withTimeout(runTransaction(pointsRef, (points) => {
           const balance = Number(points) || 0;
           if (balance < selected.coins) return;
           return balance - selected.coins;
-        });
+        }), "Firebase is taking too long. Check your internet connection and Realtime Database rules, then try again.", 15000);
         if (!result.committed) throw new Error("You do not have enough UT Coins.");
         try {
-          await set(push(dbRef(database, "redemptions")), {
+          await withTimeout(set(push(dbRef(database, "redemptions")), {
             uid: auth.currentUser.uid,
             accountEmail: auth.currentUser.email || "",
             name: name.value.trim(),
@@ -757,9 +761,13 @@ export function initRedeem() {
             redeemValue: selected.value,
             status: "Pending",
             createdAt: serverTimestamp()
-          });
+          }), "The redemption record could not be saved in time. Please try again.", 15000);
         } catch (saveError) {
-          await runTransaction(pointsRef, (points) => (Number(points) || 0) + selected.coins);
+          try {
+            await withTimeout(runTransaction(pointsRef, (points) => (Number(points) || 0) + selected.coins), "", 10000);
+          } catch (refundError) {
+            console.error("Automatic UT Coin refund failed", refundError);
+          }
           throw saveError;
         }
         currentProfileCache = null;
@@ -768,8 +776,12 @@ export function initRedeem() {
         modal.querySelector("[data-finish-redeem]").addEventListener("click", () => modal.remove());
       } catch (redeemError) {
         error.textContent = friendlyError(redeemError);
-        submit.disabled = false;
-        submit.textContent = "Confirm and Redeem";
+        console.error("Redemption submission failed", redeemError);
+      } finally {
+        if (document.body.contains(submit)) {
+          submit.disabled = false;
+          submit.textContent = "Confirm and Redeem";
+        }
       }
     });
   });
