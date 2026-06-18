@@ -440,11 +440,17 @@ function bindMobileMenu(header) {
   });
 }
 
+const UT_COIN_ICON = "https://www.image2url.com/r2/default/images/1781790380169-306b426e-a9a8-4038-bb76-8ad91ae81e12.png";
+
+function pointsMarkup(points) {
+  return `<img class="ut-coin-inline" src="${UT_COIN_ICON}" alt="">${points} UT Coins`;
+}
+
 function authHtmlForUser(user, profile = null) {
   const label = profile?.username || user.displayName || user.email || "Profile";
   const email = user.email || "";
   const points = Number(profile?.points) || 0;
-  return `<button class="btn ghost orders-btn" type="button" data-your-orders>Your Orders</button><div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} UT Coins</span><button class="btn ghost" data-logout>Logout</button>`;
+  return `<button class="btn ghost orders-btn" type="button" data-your-orders>Your Orders</button><div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${pointsMarkup(points)}</span><button class="btn ghost" data-logout>Logout</button>`;
 }
 
 function updateHeaderFromAuth() {
@@ -497,7 +503,7 @@ async function requireLogin() {
 
 async function refreshPoints() {
   const points = await currentPoints();
-  document.querySelectorAll("[data-points]").forEach((node) => { node.textContent = points + " UT Coins"; });
+  document.querySelectorAll("[data-points]").forEach((node) => { node.innerHTML = pointsMarkup(points); });
 }
 
 function fillBundleSelect(select, gameKey) {
@@ -673,7 +679,7 @@ export function initRedeem() {
     { coins: 1000, value: 25 }, { coins: 1200, value: 30 }, { coins: 2000, value: 50 },
     { coins: 4000, value: 100 }
   ];
-  const coinImage = "https://chatgpt.com/backend-api/estuary/content?id=file_000000004c587208b8659dfab740e4ac&ts=494941&p=fs&cid=1&sig=1484202469e14eb873e4f336613694027743730a152bae9692597e5a3bb86295&v=0";
+  const redeemImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR9fmWCNiCKZE3WjAsFAWneSLmBNl_J7K3FczQXzqvkwQ&s=10";
 
   button.addEventListener("click", async () => {
     if (!(await requireLogin())) return;
@@ -683,9 +689,9 @@ export function initRedeem() {
     modal.dataset.redeemModal = "";
     modal.innerHTML = `
       <div class="modal-panel redeem-panel">
-        <div class="modal-head"><div><div class="redeem-heading"><img src="${coinImage}" alt="UT Coin"><div><h2>Google Playstore Redeem Code</h2><p class="muted">Available balance: <strong data-redeem-balance>${visibleBalance} UT Coins</strong></p></div></div></div><button class="icon-btn" type="button" data-close-redeem aria-label="Close">x</button></div>
+        <div class="modal-head"><div><div class="redeem-heading"><img src="${redeemImage}" alt="Google Play Store"><div><h2>Google Playstore Redeem Code</h2><p class="muted">Available balance: <strong data-redeem-balance>${pointsMarkup(visibleBalance)}</strong></p></div></div></div><button class="icon-btn" type="button" data-close-redeem aria-label="Close">x</button></div>
         <div data-redeem-step="form">
-          <div class="redeem-options">${rewards.map((reward, index) => `<button class="redeem-option" type="button" data-reward-index="${index}"><strong>${reward.coins} UT</strong><span>= &#8377;${reward.value}</span></button>`).join("")}</div>
+          <div class="redeem-options">${rewards.map((reward, index) => `<button class="redeem-option" type="button" data-reward-index="${index}"><strong><img class="ut-coin-inline" src="${UT_COIN_ICON}" alt="">${reward.coins} UT</strong><span>= &#8377;${reward.value}</span></button>`).join("")}</div>
           <div class="form-grid redeem-contact">
             <label class="full">Name<input data-redeem-name autocomplete="name" placeholder="Enter your name" required></label>
             <label class="full">Email ID<input data-redeem-email type="email" autocomplete="email" placeholder="Enter your active email" value="${escapeHtml(auth.currentUser.email || "")}" required></label>
