@@ -677,13 +677,13 @@ export function initRedeem() {
 
   button.addEventListener("click", async () => {
     if (!(await requireLogin())) return;
-    const profile = await getProfile(auth.currentUser);
+    const visibleBalance = Number.parseInt(document.querySelector("[data-points]")?.textContent || "0", 10) || 0;
     const modal = document.createElement("div");
     modal.className = "modal open";
     modal.dataset.redeemModal = "";
     modal.innerHTML = `
       <div class="modal-panel redeem-panel">
-        <div class="modal-head"><div><div class="redeem-heading"><img src="${coinImage}" alt="UT Coin"><div><h2>Google Playstore Redeem Code</h2><p class="muted">Available balance: <strong data-redeem-balance>${Number(profile.points) || 0} UT Coins</strong></p></div></div></div><button class="icon-btn" type="button" data-close-redeem aria-label="Close">x</button></div>
+        <div class="modal-head"><div><div class="redeem-heading"><img src="${coinImage}" alt="UT Coin"><div><h2>Google Playstore Redeem Code</h2><p class="muted">Available balance: <strong data-redeem-balance>${visibleBalance} UT Coins</strong></p></div></div></div><button class="icon-btn" type="button" data-close-redeem aria-label="Close">x</button></div>
         <div data-redeem-step="form">
           <div class="redeem-options">${rewards.map((reward, index) => `<button class="redeem-option" type="button" data-reward-index="${index}"><strong>${reward.coins} UT</strong><span>= &#8377;${reward.value}</span></button>`).join("")}</div>
           <div class="form-grid redeem-contact">
@@ -721,7 +721,7 @@ export function initRedeem() {
       if (!selected) { alert("Please select a redeem value."); return; }
       if (!name.value.trim()) { name.focus(); return; }
       if (!emailValid(email.value.trim())) { email.focus(); return; }
-      if ((Number(profile.points) || 0) < selected.coins) { alert("You do not have enough UT Coins for this reward."); return; }
+      if (visibleBalance < selected.coins) { alert("You do not have enough UT Coins for this reward."); return; }
       finalSummary.textContent = `${name.value.trim()} | ${email.value.trim()} | ${selected.coins} UT Coins | Google Playstore code INR ${selected.value}`;
       formStep.hidden = true;
       confirmStep.hidden = false;
