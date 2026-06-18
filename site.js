@@ -149,8 +149,8 @@ export async function loginAccount(email, password) {
 
 export async function loginWithGoogle() {
   try {
-    const credential = await signInWithPopup(auth, googleProvider);
-    await ensureUserProfile(credential.user);
+    const credential = await withTimeout(signInWithPopup(auth, googleProvider), "Google sign-in timed out. Allow popups and make sure this domain is added in Firebase Authentication > Settings > Authorized domains.", 15000);
+    ensureUserProfile(credential.user).catch((profileError) => console.warn("Profile load failed", profileError));
     return { ok: true };
   } catch (error) {
     return { ok: false, message: authMessage(error) };
@@ -337,6 +337,7 @@ export async function saveOrder(order) {
   };
   try {
     await withTimeout(set(orderRef, baseOrder), "Could not save order in Firebase Realtime Database.");
+    rememberLocalOrder(orderRef.key, { ...baseOrder, createdAt: Date.now() });
   } catch (error) {
     throw new Error(readableOrderError(error));
   }
@@ -357,6 +358,30 @@ export async function saveOrder(order) {
   }
 }
 
+function localOrdersKey() {
+  return auth.currentUser ? `ut-local-orders-${auth.currentUser.uid}` : "ut-local-orders";
+}
+
+function rememberLocalOrder(id, order) {
+  if (!id || !auth.currentUser) return;
+  try {
+    const key = localOrdersKey();
+    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    const next = [{ id, ...order }, ...saved.filter((item) => item.id !== id)].slice(0, 20);
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch (error) {
+    console.warn("Could not save local order copy", error);
+  }
+}
+
+function readLocalOrders() {
+  if (!auth.currentUser) return [];
+  try {
+    return JSON.parse(localStorage.getItem(localOrdersKey()) || "[]");
+  } catch {
+    return [];
+  }
+}
 function navHtml(active) {
   const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
@@ -415,7 +440,7 @@ function authHtmlForUser(user, profile = null) {
   const label = profile?.username || user.displayName || user.email || "Profile";
   const email = user.email || "";
   const points = Number(profile?.points) || 0;
-  return `<button class="btn ghost orders-btn" type="button" data-your-orders>Your Orders</button><div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} pts</span><button class="btn ghost" data-logout>Logout</button>`;
+  return `<button class="btn ghost orders-btn" type="button" data-your-orders>Your Orders</button><div class="profile-chip">${profileAvatar(user, label)}<span class="profile-copy"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(email)}</small></span></div><span class="points-pill" data-points>${points} UT Coins</span><button class="btn ghost" data-logout>Logout</button>`;
 }
 
 function updateHeaderFromAuth() {
@@ -468,7 +493,7 @@ async function requireLogin() {
 
 async function refreshPoints() {
   const points = await currentPoints();
-  document.querySelectorAll("[data-points]").forEach((node) => { node.textContent = points + " pts"; });
+  document.querySelectorAll("[data-points]").forEach((node) => { node.textContent = points + " UT Coins"; });
 }
 
 function fillBundleSelect(select, gameKey) {
@@ -665,17 +690,19 @@ async function showYourOrdersModal() {
   const list = modal.querySelector("[data-your-orders-list]");
   const currentUid = auth.currentUser.uid;
   const currentEmail = (auth.currentUser.email || "").toLowerCase();
-  onValue(dbRef(database, "orders"), (snapshot) => {
-    const orders = [];
-    snapshot.forEach((child) => {
-      const order = { id: child.key, ...child.val() };
+  const renderOrders = (remoteOrders) => {
+    const byId = new Map();
+    [...remoteOrders, ...readLocalOrders()].forEach((order) => {
+      const id = order.id || order.paymentReference || `${order.createdAt || ""}-${order.utr || ""}`;
+      if (!id) return;
+      byId.set(id, { ...order, id });
+    });
+    const orders = [...byId.values()].filter((order) => {
       const accountEmail = String(order.accountEmail || "").toLowerCase();
       const customerEmail = String(order.customerEmail || "").toLowerCase();
-      if (order.uid === currentUid || accountEmail === currentEmail || customerEmail === currentEmail) {
-        orders.push(order);
-      }
+      return order.uid === currentUid || accountEmail === currentEmail || customerEmail === currentEmail;
     });
-    orders.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    orders.sort((a, b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
     if (!orders.length) {
       list.innerHTML = '<div class="notice">No orders yet.</div>';
       return;
@@ -685,11 +712,17 @@ async function showYourOrdersModal() {
         <div>
           <strong>${escapeHtml(order.game || "")} - ${escapeHtml(order.bundle || "")}</strong>
           <span>${money(order.amount || 0)} | ${escapeHtml(order.playerId || "No game ID required")}</span>
-          <small>UTR: ${escapeHtml(order.utr || "")} | Points: ${Number(order.pointsEarned) || 0}</small>
+          <small>UTR: ${escapeHtml(order.utr || "")} | UT Coins: ${Number(order.pointsEarned) || 0}</small>
         </div>
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
       </article>
     `).join("");
+  };
+  renderOrders([]);
+  onValue(dbRef(database, "orders"), (snapshot) => {
+    const remoteOrders = [];
+    snapshot.forEach((child) => remoteOrders.push({ id: child.key, ...child.val() }));
+    renderOrders(remoteOrders);
   }, (error) => {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
@@ -761,4 +794,5 @@ export async function initAdminPage() {
     notice.textContent = error.message || "Could not load orders.";
   });
 }
+
 
