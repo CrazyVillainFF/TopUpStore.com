@@ -34,7 +34,8 @@ export const TopupData = {
     bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     pubg: { name: "PUBG Mobile", item: "UC", logo: "pubg.svg.png", page: "pubg.html", description: "PUBG Mobile UC bundles with a clear payment summary before checkout.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     cod: { name: "Call of Duty Mobile", item: "CP", logo: "cod.svg.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] },
-    minecraft: { name: "Minecraft", item: "Minecoins", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg", page: "minecraft.html", description: "Minecraft Minecoins packs with simple checkout. No game ID number required.", noGameId: true, bundles: [{ label: "1720 Minecoins", amount: 680, originalAmount: 735 }, { label: "3500 Minecoins", amount: 1389, originalAmount: 1457 }] }
+    minecraft: { name: "Minecraft", item: "Minecoins", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg", page: "minecraft.html", description: "Minecraft Minecoins packs with simple checkout. No game ID number required.", noGameId: true, bundles: [{ label: "1720 Minecoins", amount: 680, originalAmount: 735 }, { label: "3500 Minecoins", amount: 1389, originalAmount: 1457 }] },
+    gta5: { name: "GTA 5", item: "Premium Edition Game Key", logo: "https://crystalpng.com/wp-content/uploads/2025/06/GTA-5.png", page: "gta5.html", description: "GTA 5 Premium Edition activation key for Rockstar Games Launcher, delivered to your active email after verification.", noGameId: true, bundles: [{ label: "GTA 5 Premium Edition (Game Key)", amount: 1500, originalAmount: 2499 }] }
   }
 };
 
@@ -383,7 +384,7 @@ function readLocalOrders() {
   }
 }
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"], ["gta5", "GTA 5", "gta5.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -510,7 +511,7 @@ function fillBundleSelect(select, gameKey) {
 
 function bundleSummary(bundle, apply) {
   const finalAmount = discounted(bundle.amount, apply, bundle);
-  const offer = bundle.originalAmount ? `${discountPercent(bundle).toFixed(2)}% Minecraft offer` : apply ? `${discountPercent(bundle)}% offer applied` : "Standard price";
+  const offer = bundle.originalAmount ? `${discountPercent(bundle).toFixed(2)}% product offer` : apply ? `${discountPercent(bundle)}% offer applied` : "Standard price";
   const original = bundle.originalAmount ? ` | Original ${money(bundle.originalAmount)}` : "";
   return `${bundle.label}${original} | ${offer} | Total ${money(finalAmount)}`;
 }
@@ -570,7 +571,7 @@ export function initGamePage(gameKey) {
   document.querySelectorAll("[data-game-logo]").forEach((node) => { node.src = game.logo; node.alt = game.name + " logo"; });
   document.querySelectorAll("[data-game-description]").forEach((node) => { node.textContent = game.description; });
   const plans = document.querySelector("[data-plan-grid]");
-  if (plans && !plans.children.length) plans.innerHTML = game.bundles.map((bundle, index) => `<article class="plan-card"><img src="${game.logo}" alt="${game.name} logo"><div><strong>${bundle.label}</strong><span>${bundle.originalAmount ? `<s>${money(bundle.originalAmount)}</s> ` : ""}${money(bundle.amount)}</span>${bundle.originalAmount ? `<small class="field-help">${discountPercent(bundle).toFixed(2)}% Minecraft offer</small>` : ""}</div><button class="btn ghost" data-select-plan="${index}">Select</button></article>`).join("");
+  if (plans && !plans.children.length) plans.innerHTML = game.bundles.map((bundle, index) => `<article class="plan-card"><img src="${game.logo}" alt="${game.name} logo"><div><strong>${bundle.label}</strong><span>${bundle.originalAmount ? `<s>${money(bundle.originalAmount)}</s> ` : ""}${money(bundle.amount)}</span>${bundle.originalAmount ? `<small class="field-help">${discountPercent(bundle).toFixed(2)}% offer</small>` : ""}</div><button class="btn ghost" data-select-plan="${index}">Select</button></article>`).join("");
   const form = document.querySelector("[data-game-form]");
   if (!form) return;
   const username = form.querySelector("[data-username]");
