@@ -10,6 +10,13 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
       }
+    },
+    "redemptions": {
+      ".indexOn": ["uid", "status"],
+      "$redemptionId": {
+        ".read": "auth != null && (data.child('uid').val() == auth.uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, get, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -668,8 +668,104 @@ export function initGamePage(gameKey) {
 export function initRedeem() {
   const button = document.querySelector("[data-redeem]");
   if (!button) return;
-  button.addEventListener("click", () => {
-    alert("Reward redeem will be enabled after Supabase points rules are configured.");
+  const rewards = [
+    { coins: 400, value: 10 }, { coins: 600, value: 15 }, { coins: 800, value: 20 },
+    { coins: 1000, value: 25 }, { coins: 1200, value: 30 }, { coins: 2000, value: 50 },
+    { coins: 4000, value: 100 }
+  ];
+  const coinImage = "https://chatgpt.com/backend-api/estuary/content?id=file_000000004c587208b8659dfab740e4ac&ts=494941&p=fs&cid=1&sig=1484202469e14eb873e4f336613694027743730a152bae9692597e5a3bb86295&v=0";
+
+  button.addEventListener("click", async () => {
+    if (!(await requireLogin())) return;
+    const profile = await getProfile(auth.currentUser);
+    const modal = document.createElement("div");
+    modal.className = "modal open";
+    modal.dataset.redeemModal = "";
+    modal.innerHTML = `
+      <div class="modal-panel redeem-panel">
+        <div class="modal-head"><div><div class="redeem-heading"><img src="${coinImage}" alt="UT Coin"><div><h2>Google Playstore Redeem Code</h2><p class="muted">Available balance: <strong data-redeem-balance>${Number(profile.points) || 0} UT Coins</strong></p></div></div></div><button class="icon-btn" type="button" data-close-redeem aria-label="Close">x</button></div>
+        <div data-redeem-step="form">
+          <div class="redeem-options">${rewards.map((reward, index) => `<button class="redeem-option" type="button" data-reward-index="${index}"><strong>${reward.coins} UT</strong><span>= &#8377;${reward.value}</span></button>`).join("")}</div>
+          <div class="form-grid redeem-contact">
+            <label class="full">Name<input data-redeem-name autocomplete="name" placeholder="Enter your name" required></label>
+            <label class="full">Email ID<input data-redeem-email type="email" autocomplete="email" placeholder="Enter your active email" value="${escapeHtml(auth.currentUser.email || "")}" required></label>
+            <div class="summary-box full" data-redeem-summary>Select a redeem value.</div>
+            <button class="btn success full" type="button" data-review-redeem>Confirm</button>
+          </div>
+        </div>
+        <div data-redeem-step="confirm" hidden>
+          <div class="redeem-warning"><strong>Final confirmation</strong><p>UT Coins used for this redemption cannot be refunded. Please confirm your name, email, and selected value are correct.</p></div>
+          <div class="summary-box" data-final-redeem-summary></div>
+          <div class="redeem-final-actions"><button class="btn ghost" type="button" data-back-redeem>Go Back</button><button class="btn success" type="button" data-submit-redeem>Confirm and Redeem</button></div>
+          <div class="error-msg" data-redeem-error></div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    let selected = null;
+    const formStep = modal.querySelector('[data-redeem-step="form"]');
+    const confirmStep = modal.querySelector('[data-redeem-step="confirm"]');
+    const summary = modal.querySelector("[data-redeem-summary]");
+    const finalSummary = modal.querySelector("[data-final-redeem-summary]");
+    const error = modal.querySelector("[data-redeem-error]");
+    const name = modal.querySelector("[data-redeem-name]");
+    const email = modal.querySelector("[data-redeem-email]");
+
+    modal.querySelector("[data-close-redeem]").addEventListener("click", () => modal.remove());
+    modal.querySelectorAll("[data-reward-index]").forEach((option) => option.addEventListener("click", () => {
+      selected = rewards[Number(option.dataset.rewardIndex)];
+      modal.querySelectorAll(".redeem-option").forEach((node) => node.classList.toggle("selected", node === option));
+      summary.textContent = `${selected.coins} UT Coins for a Google Playstore redeem code worth INR ${selected.value}.`;
+    }));
+    modal.querySelector("[data-review-redeem]").addEventListener("click", () => {
+      if (!selected) { alert("Please select a redeem value."); return; }
+      if (!name.value.trim()) { name.focus(); return; }
+      if (!emailValid(email.value.trim())) { email.focus(); return; }
+      if ((Number(profile.points) || 0) < selected.coins) { alert("You do not have enough UT Coins for this reward."); return; }
+      finalSummary.textContent = `${name.value.trim()} | ${email.value.trim()} | ${selected.coins} UT Coins | Google Playstore code INR ${selected.value}`;
+      formStep.hidden = true;
+      confirmStep.hidden = false;
+    });
+    modal.querySelector("[data-back-redeem]").addEventListener("click", () => { confirmStep.hidden = true; formStep.hidden = false; });
+    modal.querySelector("[data-submit-redeem]").addEventListener("click", async (event) => {
+      const submit = event.currentTarget;
+      submit.disabled = true;
+      submit.textContent = "Submitting...";
+      error.textContent = "";
+      const pointsRef = dbRef(database, `users/${auth.currentUser.uid}/points`);
+      try {
+        const result = await runTransaction(pointsRef, (points) => {
+          const balance = Number(points) || 0;
+          if (balance < selected.coins) return;
+          return balance - selected.coins;
+        });
+        if (!result.committed) throw new Error("You do not have enough UT Coins.");
+        try {
+          await set(push(dbRef(database, "redemptions")), {
+            uid: auth.currentUser.uid,
+            accountEmail: auth.currentUser.email || "",
+            name: name.value.trim(),
+            email: email.value.trim(),
+            reward: "Google Playstore Redeem Code",
+            coinsUsed: selected.coins,
+            redeemValue: selected.value,
+            status: "Pending",
+            createdAt: serverTimestamp()
+          });
+        } catch (saveError) {
+          await runTransaction(pointsRef, (points) => (Number(points) || 0) + selected.coins);
+          throw saveError;
+        }
+        currentProfileCache = null;
+        await refreshPoints();
+        modal.querySelector(".redeem-panel").innerHTML = `<div class="success-icon">&#10003;</div><h2>Redemption Submitted</h2><p class="muted">Your Google Playstore redeem-code request is pending. We will send it to ${escapeHtml(email.value.trim())} after verification.</p><button class="btn success full" type="button" data-finish-redeem>Done</button>`;
+        modal.querySelector("[data-finish-redeem]").addEventListener("click", () => modal.remove());
+      } catch (redeemError) {
+        error.textContent = friendlyError(redeemError);
+        submit.disabled = false;
+        submit.textContent = "Confirm and Redeem";
+      }
+    });
   });
 }
 
@@ -707,8 +803,14 @@ async function recalculateUserPoints(uid) {
       total += Number(order.pointsEarned) || Math.floor(Number(order.amount || 0) * POINTS_PER_RUPEE);
     }
   });
+  const redemptionsSnapshot = await get(dbRef(database, "redemptions"));
+  let redeemed = 0;
+  redemptionsSnapshot.forEach((child) => {
+    const redemption = child.val();
+    if (redemption?.uid === uid && redemption?.status !== "Rejected") redeemed += Number(redemption.coinsUsed) || 0;
+  });
   await update(dbRef(database, `users/${uid}`), {
-    points: total,
+    points: Math.max(0, total - redeemed),
     pointsUpdatedAt: serverTimestamp()
   });
   if (auth.currentUser?.uid === uid) {
