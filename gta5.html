@@ -69,11 +69,11 @@
         <p class="muted">Enter your Rockstar account name and active email for key delivery.</p>
         <div class="form-grid">
           <label class="full">Rockstar Account Name<input data-username placeholder="Enter your Rockstar account name" required></label>
-          <label class="full">Game ID<input data-player-id placeholder="Not required"></label>
-          <label>Selected Product<select data-bundle required></select></label>
+          <label class="full" hidden>Game ID<input data-player-id value="Not required" aria-hidden="true"></label>
+          <label>Selected Product<select data-bundle required><option value="0" selected>GTA 5 Premium Edition (Game Key) - INR 1,500.00</option></select></label>
           <label>Active Email<input data-customer-email type="email" placeholder="Enter your active email" required><small class="field-help">Your activation key will be delivered to this email after verification.</small></label>
-          <label class="full check-row"><input type="checkbox" data-offer checked> Apply product offer</label>
-          <div class="summary-box full" data-summary>Select the product to calculate the amount.</div>
+          <label class="full check-row" hidden><input type="checkbox" data-offer checked> Apply product offer</label>
+          <div class="summary-box full" data-summary>GTA 5 Premium Edition (Game Key) | Original INR 2,499.00 | 39.98% product offer | Total INR 1,500.00</div>
           <button class="btn success full" type="submit">Continue to Manual Payment</button>
         </div>
       </form>
@@ -82,6 +82,6 @@
 </main>
 
 <footer class="footer"><div class="page-shell"><span>Unlimited Topup</span><span>Need Help? Contact Us: <a href="mailto:unlimitedtopup001@gmail.com">unlimitedtopup001@gmail.com</a> <strong>24/7 Available</strong></span></div></footer>
-<script type="module">import { renderHeader, initGamePage } from './site.js?v=20260618-gta5'; initGamePage('gta5'); renderHeader('gta5');</script>
+<script type="module">import { renderHeader, initGamePage } from './site.js?v=20260618-autoselect'; initGamePage('gta5'); renderHeader('gta5');</script>
 </body>
 </html>

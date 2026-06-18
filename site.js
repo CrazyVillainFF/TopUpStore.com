@@ -33,9 +33,12 @@ export const TopupData = {
     freefire: { name: "Free Fire", item: "Diamonds", logo: "freefire.svg.png", page: "freefire.html", description: "Fast diamond packs and memberships for Free Fire accounts with UPI checkout.", bundles: [{ label: "100 Diamonds", amount: 79 }, { label: "310 Diamonds", amount: 240 }, { label: "520 Diamonds", amount: 399 }, { label: "1060 Diamonds", amount: 799 }, { label: "Weekly Membership", amount: 159 }, { label: "Monthly Membership", amount: 799 }] },
     bgmi: { name: "BGMI", item: "UC", logo: "bgmi.svg.jpg", page: "bgmi.html", description: "Reliable BGMI UC packs with Supabase order tracking.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
     pubg: { name: "PUBG Mobile", item: "UC", logo: "pubg.svg.png", page: "pubg.html", description: "PUBG Mobile UC bundles with a clear payment summary before checkout.", bundles: [{ label: "60 UC", amount: 75 }, { label: "325 UC", amount: 380 }, { label: "660 UC", amount: 750 }, { label: "1800 UC", amount: 1850 }] },
-    cod: { name: "Call of Duty Mobile", item: "CP", logo: "cod.svg.png", page: "cod.html", description: "CP bundles for Call of Duty Mobile with clear checkout steps.", bundles: [{ label: "80 CP", amount: 79 }, { label: "420 CP", amount: 399 }, { label: "880 CP", amount: 799 }, { label: "2400 CP", amount: 1999 }] },
+    valorant: { name: "Valorant", item: "VP", logo: "https://freelogopng.com/images/all_img/1664302472valorant-logo%20png-black.png", page: "valorant.html", description: "Valorant Points bundles for your Riot account with clear manual payment verification.", bundles: [{ label: "475 VP", amount: 410, originalAmount: 435 }, { label: "1000 VP", amount: 840, originalAmount: 870 }, { label: "1520 VP", amount: 1360, originalAmount: 1425 }, { label: "2050 VP", amount: 1670, originalAmount: 1740 }, { label: "2575 VP", amount: 2270, originalAmount: 2375 }, { label: "3650 VP", amount: 3000, originalAmount: 3325 }] },
     minecraft: { name: "Minecraft", item: "Minecoins", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg", page: "minecraft.html", description: "Minecraft Minecoins packs with simple checkout. No game ID number required.", noGameId: true, bundles: [{ label: "1720 Minecoins", amount: 680, originalAmount: 735 }, { label: "3500 Minecoins", amount: 1389, originalAmount: 1457 }] },
-    gta5: { name: "GTA 5", item: "Premium Edition Game Key", logo: "https://crystalpng.com/wp-content/uploads/2025/06/GTA-5.png", page: "gta5.html", description: "GTA 5 Premium Edition activation key for Rockstar Games Launcher, delivered to your active email after verification.", noGameId: true, bundles: [{ label: "GTA 5 Premium Edition (Game Key)", amount: 1500, originalAmount: 2499 }] }
+    minecraftpc: { name: "Minecraft", item: "Java & Bedrock Edition PC Key", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg?w=768", page: "minecraft-pc.html", description: "Minecraft: Java & Bedrock Edition activation key for PC, delivered to your active email after payment verification.", noGameId: true, bundles: [{ label: "Minecraft: Java & Bedrock Edition (PC) Activation Key", amount: 1900, originalAmount: 2605 }] },
+    gta5: { name: "GTA 5", item: "Premium Edition Game Key", logo: "https://crystalpng.com/wp-content/uploads/2025/06/GTA-5.png", page: "gta5.html", description: "GTA 5 Premium Edition activation key for Rockstar Games Launcher, delivered to your active email after verification.", noGameId: true, bundles: [{ label: "GTA 5 Premium Edition (Game Key)", amount: 1500, originalAmount: 2499 }] },
+    forza5: { name: "Forza Horizon 5", item: "PC/XBOX Live Key", logo: "https://upload.wikimedia.org/wikipedia/en/8/86/Forza_Horizon_5_cover_art.jpg", page: "forza-horizon-5.html", description: "Forza Horizon 5 PC/XBOX Live activation key delivered to your active email after payment verification.", noGameId: true, bundles: [{ label: "Forza Horizon 5 PC/XBOX Live Key", amount: 3500, originalAmount: 7646 }] },
+    forza6: { name: "Forza Horizon 6", item: "Standard Edition XBOX Live Key", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Forza_Horizon_6_key_art.jpeg/250px-Forza_Horizon_6_key_art.jpeg", page: "forza-horizon-6.html", description: "Forza Horizon 6 Standard Edition for Windows/Xbox Series X/S, delivered as an XBOX Live key.", noGameId: true, bundles: [{ label: "Forza Horizon 6 Standard Edition (Windows/Xbox Series X/S) XBOX Live Key", amount: 5300, originalAmount: 5499 }] }
   }
 };
 
@@ -384,7 +387,7 @@ function readLocalOrders() {
   }
 }
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["cod", "Call of Duty", "cod.html"], ["minecraft", "Minecraft", "minecraft.html"], ["gta5", "GTA 5", "gta5.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -516,6 +519,56 @@ function bundleSummary(bundle, apply) {
   return `${bundle.label}${original} | ${offer} | Total ${money(finalAmount)}`;
 }
 
+export function initCatalogFilters() {
+  const search = document.querySelector("[data-game-search]");
+  const filterButtons = [...document.querySelectorAll("[data-game-filter]")];
+  const cards = [...document.querySelectorAll(".game-grid .game-card")];
+  const empty = document.querySelector("[data-catalog-empty]");
+  if (!search || !filterButtons.length || !cards.length) return;
+
+  const keyCategories = {
+    freefire: "topup",
+    bgmi: "topup",
+    pubg: "topup",
+    valorant: "topup",
+    minecraft: "topup",
+    minecraftpc: "key",
+    gta5: "key",
+    forza5: "key",
+    forza6: "key"
+  };
+  let activeFilter = "all";
+
+  cards.forEach((card) => {
+    const action = card.querySelector("[data-open-order]");
+    card.dataset.category = keyCategories[action?.dataset.openOrder] || "topup";
+  });
+
+  const apply = () => {
+    const query = search.value.trim().toLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const matchesText = !query || card.textContent.toLowerCase().includes(query);
+      const matchesFilter = activeFilter === "all" || card.dataset.category === activeFilter;
+      const show = matchesText && matchesFilter;
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (empty) empty.hidden = visible !== 0;
+  };
+
+  search.addEventListener("input", apply);
+  filterButtons.forEach((button) => button.addEventListener("click", () => {
+    activeFilter = button.dataset.gameFilter;
+    filterButtons.forEach((item) => {
+      const selected = item === button;
+      item.classList.toggle("active", selected);
+      item.setAttribute("aria-pressed", String(selected));
+    });
+    apply();
+  }));
+}
+
 export function initOrderModal() {
   const modal = document.querySelector("[data-order-modal]");
   if (!modal) return;
@@ -593,6 +646,8 @@ export function initGamePage(gameKey) {
     const selected = game.bundles[Number(bundle.value)];
     summary.textContent = bundleSummary(selected, game.noGameId ? true : offer.checked);
   };
+  if (game.bundles.length === 1) bundle.value = "0";
+  update();
   bundle.addEventListener("change", update); offer.addEventListener("change", update);
   document.querySelectorAll("[data-select-plan]").forEach((button) => button.addEventListener("click", () => { bundle.value = button.dataset.selectPlan; update(); form.scrollIntoView({ behavior: "smooth", block: "center" }); }));
   form.addEventListener("submit", async (event) => {
