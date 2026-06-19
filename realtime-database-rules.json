@@ -12,9 +12,9 @@
       }
     },
     "redemptions": {
+      ".read": "auth != null && ((query.orderByChild == 'uid' && query.equalTo == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
       ".indexOn": ["uid", "status"],
       "$redemptionId": {
-        ".read": "auth != null && (data.child('uid').val() == auth.uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
         ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
       }
     }

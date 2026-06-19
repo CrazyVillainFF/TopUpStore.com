@@ -1,6 +1,6 @@
 ﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, get, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, push, serverTimestamp, onValue, update, set, get, runTransaction, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const firebaseConfig = {
@@ -866,11 +866,21 @@ async function showYourOrdersModal() {
       </div>
     </div>`;
   document.body.appendChild(modal);
-  modal.querySelector("[data-close-orders]").addEventListener("click", () => modal.remove());
   const list = modal.querySelector("[data-your-orders-list]");
   const currentUid = auth.currentUser.uid;
   const currentEmail = (auth.currentUser.email || "").toLowerCase();
-  const renderOrders = (remoteOrders) => {
+  let remoteOrders = [];
+  let remoteRedemptions = [];
+  let stopOrders = null;
+  let stopRedemptions = null;
+  const closeOrders = () => {
+    if (stopOrders) stopOrders();
+    if (stopRedemptions) stopRedemptions();
+    modal.remove();
+  };
+  modal.querySelector("[data-close-orders]").addEventListener("click", closeOrders);
+
+  const renderHistory = () => {
     const byId = new Map();
     [...readLocalOrders(), ...remoteOrders].forEach((order) => {
       const id = order.id || order.paymentReference || `${order.createdAt || ""}-${order.utr || ""}`;
@@ -883,11 +893,32 @@ async function showYourOrdersModal() {
       return order.uid === currentUid || accountEmail === currentEmail || customerEmail === currentEmail;
     });
     orders.sort((a, b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
-    if (!orders.length) {
+    const redemptions = remoteRedemptions
+      .filter((redemption) => redemption.uid === currentUid)
+      .map((redemption) => ({ ...redemption, historyType: "redemption" }));
+    const history = [
+      ...orders.map((order) => ({ ...order, historyType: "order" })),
+      ...redemptions
+    ].sort((a, b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
+
+    if (!history.length) {
       list.innerHTML = '<div class="notice">No orders yet.</div>';
       return;
     }
-    list.innerHTML = orders.map((order) => `
+    list.innerHTML = history.map((order) => order.historyType === "redemption" ? `
+      <article class="user-order-card redemption-order-card">
+        <div class="redemption-order-copy">
+          <strong>Google Playstore Redeem Code</strong>
+          <span>${Number(order.coinsUsed) || 0} UT Coins | Value INR ${Number(order.redeemValue) || 0}</span>
+          <small>Delivery email: ${escapeHtml(order.email || order.accountEmail || "")}</small>
+          <div class="redeem-code-space">
+            <span>Redeem code</span>
+            <strong>${order.redeemCode ? escapeHtml(order.redeemCode) : "Waiting for redeem code"}</strong>
+          </div>
+        </div>
+        <span class="status-badge ${statusClass(order.status)}">${escapeHtml(normalizedOrderStatus(order.status))}</span>
+      </article>
+    ` : `
       <article class="user-order-card">
         <div>
           <strong>${escapeHtml(order.game || "")} - ${escapeHtml(order.bundle || "")}</strong>
@@ -898,13 +929,21 @@ async function showYourOrdersModal() {
       </article>
     `).join("");
   };
-  renderOrders([]);
-  onValue(dbRef(database, "orders"), (snapshot) => {
-    const remoteOrders = [];
+  renderHistory();
+  stopOrders = onValue(dbRef(database, "orders"), (snapshot) => {
+    remoteOrders = [];
     snapshot.forEach((child) => remoteOrders.push({ id: child.key, ...child.val() }));
-    renderOrders(remoteOrders);
+    renderHistory();
   }, (error) => {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
+  });
+  const userRedemptionsQuery = query(dbRef(database, "redemptions"), orderByChild("uid"), equalTo(currentUid));
+  stopRedemptions = onValue(userRedemptionsQuery, (snapshot) => {
+    remoteRedemptions = [];
+    snapshot.forEach((child) => remoteRedemptions.push({ id: child.key, ...child.val() }));
+    renderHistory();
+  }, (error) => {
+    console.error("Could not load redemptions", error);
   });
 }
 
