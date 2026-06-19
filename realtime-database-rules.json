@@ -1,13 +1,16 @@
 {
   "rules": {
     "orders": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      ".indexOn": ["uid", "accountEmail"]
+      ".read": "auth != null && ((query.orderByChild == 'uid' && query.equalTo == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
+      ".indexOn": ["uid", "accountEmail", "status"],
+      "$orderId": {
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com' || (data.exists() && data.child('uid').val() == auth.uid && newData.child('uid').val() == data.child('uid').val() && newData.child('status').val() == data.child('status').val() && newData.child('pointsEarned').val() == data.child('pointsEarned').val() && ((!data.child('gameKey').exists() && newData.child('gameKey').val() == 'Pending') || newData.child('gameKey').val() == data.child('gameKey').val())))",
+        ".validate": "newData.hasChildren(['uid', 'game', 'bundle', 'amount', 'status', 'createdAt']) && newData.child('uid').isString() && newData.child('game').isString() && newData.child('bundle').isString() && newData.child('amount').isNumber() && newData.child('status').isString()"
+      }
     },
     "users": {
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
         ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
       }
     },
@@ -15,8 +18,11 @@
       ".read": "auth != null && ((query.orderByChild == 'uid' && query.equalTo == auth.uid) || (query.orderByChild == 'accountEmail' && query.equalTo == auth.token.email) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
       ".indexOn": ["uid", "accountEmail", "status"],
       "$redemptionId": {
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
+        ".validate": "newData.hasChildren(['uid', 'accountEmail', 'coinsUsed', 'redeemValue', 'status', 'createdAt'])"
       }
-    }
+    },
+    ".read": false,
+    ".write": false
   }
 }
