@@ -742,34 +742,29 @@ export function initRedeem() {
       submit.disabled = true;
       submit.textContent = "Submitting...";
       error.textContent = "";
-      const pointsRef = dbRef(database, `users/${auth.currentUser.uid}/points`);
+      const uid = auth.currentUser.uid;
+      const pointsRef = dbRef(database, `users/${uid}/points`);
       try {
-        const result = await withTimeout(runTransaction(pointsRef, (points) => {
-          const balance = Number(points) || 0;
-          if (balance < selected.coins) return;
-          return balance - selected.coins;
-        }), "Firebase is taking too long. Check your internet connection and Realtime Database rules, then try again.", 15000);
-        if (!result.committed) throw new Error("You do not have enough UT Coins.");
-        try {
-          await withTimeout(set(push(dbRef(database, "redemptions")), {
-            uid: auth.currentUser.uid,
-            accountEmail: auth.currentUser.email || "",
-            name: name.value.trim(),
-            email: email.value.trim(),
-            reward: "Google Playstore Redeem Code",
-            coinsUsed: selected.coins,
-            redeemValue: selected.value,
-            status: "Pending",
-            createdAt: serverTimestamp()
-          }), "The redemption record could not be saved in time. Please try again.", 15000);
-        } catch (saveError) {
-          try {
-            await withTimeout(runTransaction(pointsRef, (points) => (Number(points) || 0) + selected.coins), "", 10000);
-          } catch (refundError) {
-            console.error("Automatic UT Coin refund failed", refundError);
-          }
-          throw saveError;
-        }
+        const pointsSnapshot = await withTimeout(get(pointsRef), "Could not check your UT Coin balance. Please try again.", 12000);
+        const currentBalance = Number(pointsSnapshot.val()) || 0;
+        if (currentBalance < selected.coins) throw new Error("You do not have enough UT Coins.");
+
+        const redemptionRef = push(dbRef(database, "redemptions"));
+        const updates = {};
+        updates[`users/${uid}/points`] = currentBalance - selected.coins;
+        updates[`users/${uid}/pointsUpdatedAt`] = serverTimestamp();
+        updates[`redemptions/${redemptionRef.key}`] = {
+          uid,
+          accountEmail: auth.currentUser.email || "",
+          name: name.value.trim(),
+          email: email.value.trim(),
+          reward: "Google Playstore Redeem Code",
+          coinsUsed: selected.coins,
+          redeemValue: selected.value,
+          status: "Pending",
+          createdAt: serverTimestamp()
+        };
+        await withTimeout(update(dbRef(database), updates), "Firebase could not save the redemption. Check your Realtime Database rules and try again.", 15000);
         currentProfileCache = null;
         await refreshPoints();
         modal.querySelector(".redeem-panel").innerHTML = `<div class="success-icon">&#10003;</div><h2>Redemption Submitted</h2><p class="muted">Your Google Playstore redeem-code request is pending. We will send it to ${escapeHtml(email.value.trim())} after verification.</p><button class="btn success full" type="button" data-finish-redeem>Done</button>`;
@@ -808,7 +803,16 @@ function showOrderSubmittedPopup() {
 }
 
 function statusClass(status) {
-  return String(status || "Pending Verification").toLowerCase().replace(/[^a-z]+/g, "-");
+  return normalizedOrderStatus(status).toLowerCase().replace(/[^a-z]+/g, "-");
+}
+
+function normalizedOrderStatus(status) {
+  const value = String(status || "Pending Verification").trim();
+  if (/^complete$/i.test(value)) return "Completed";
+  if (/^payment verified$/i.test(value)) return "Payment Verified";
+  if (/^reject(ed)?$/i.test(value)) return "Rejected";
+  if (/^pending$/i.test(value)) return "Pending Verification";
+  return value;
 }
 
 async function recalculateUserPoints(uid) {
@@ -817,7 +821,7 @@ async function recalculateUserPoints(uid) {
   let total = 0;
   snapshot.forEach((child) => {
     const order = child.val();
-    if (order?.uid === uid && order?.status === "Completed") {
+    if (order?.uid === uid && normalizedOrderStatus(order?.status) === "Completed") {
       total += Number(order.pointsEarned) || Math.floor(Number(order.amount || 0) * POINTS_PER_RUPEE);
     }
   });
@@ -868,7 +872,7 @@ async function showYourOrdersModal() {
   const currentEmail = (auth.currentUser.email || "").toLowerCase();
   const renderOrders = (remoteOrders) => {
     const byId = new Map();
-    [...remoteOrders, ...readLocalOrders()].forEach((order) => {
+    [...readLocalOrders(), ...remoteOrders].forEach((order) => {
       const id = order.id || order.paymentReference || `${order.createdAt || ""}-${order.utr || ""}`;
       if (!id) return;
       byId.set(id, { ...order, id });
@@ -890,7 +894,7 @@ async function showYourOrdersModal() {
           <span>${money(order.amount || 0)} | ${escapeHtml(order.playerId || "No game ID required")}</span>
           <small>UTR: ${escapeHtml(order.utr || "")} | UT Coins: ${Number(order.pointsEarned) || 0}</small>
         </div>
-        <span class="status-badge ${statusClass(order.status)}">${escapeHtml(order.status || "Pending Verification")}</span>
+        <span class="status-badge ${statusClass(order.status)}">${escapeHtml(normalizedOrderStatus(order.status))}</span>
       </article>
     `).join("");
   };
