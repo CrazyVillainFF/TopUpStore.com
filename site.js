@@ -34,7 +34,8 @@ export const TopupData = {
     minecraftpc: { name: "Minecraft", item: "Java & Bedrock Edition PC Key", logo: "https://thumbs.dreamstime.com/b/minecraft-logo-online-game-dirt-block-illustrations-concept-design-isolated-186775550.jpg?w=768", page: "minecraft-pc.html", description: "Minecraft: Java & Bedrock Edition activation key for PC, delivered to your active email after payment verification.", noGameId: true, bundles: [{ label: "Minecraft: Java & Bedrock Edition (PC) Activation Key", amount: 1900, originalAmount: 2605 }] },
     gta5: { name: "GTA 5", item: "Premium Edition Game Key", logo: "https://crystalpng.com/wp-content/uploads/2025/06/GTA-5.png", page: "gta5.html", description: "GTA 5 Premium Edition activation key for Rockstar Games Launcher, delivered to your active email after verification.", noGameId: true, bundles: [{ label: "GTA 5 Premium Edition (Game Key)", amount: 1500, originalAmount: 2499 }] },
     forza5: { name: "Forza Horizon 5", item: "PC/XBOX Live Key", logo: "https://upload.wikimedia.org/wikipedia/en/8/86/Forza_Horizon_5_cover_art.jpg", page: "forza-horizon-5.html", description: "Forza Horizon 5 PC/XBOX Live activation key delivered to your active email after payment verification.", noGameId: true, bundles: [{ label: "Forza Horizon 5 PC/XBOX Live Key", amount: 3500, originalAmount: 7646 }] },
-    forza6: { name: "Forza Horizon 6", item: "Standard Edition XBOX Live Key", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Forza_Horizon_6_key_art.jpeg/250px-Forza_Horizon_6_key_art.jpeg", page: "forza-horizon-6.html", description: "Forza Horizon 6 Standard Edition for Windows/Xbox Series X/S, delivered as an XBOX Live key.", noGameId: true, bundles: [{ label: "Forza Horizon 6 Standard Edition (Windows/Xbox Series X/S) XBOX Live Key", amount: 5300, originalAmount: 5499 }] }
+    forza6: { name: "Forza Horizon 6", item: "Standard Edition XBOX Live Key", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Forza_Horizon_6_key_art.jpeg/250px-Forza_Horizon_6_key_art.jpeg", page: "forza-horizon-6.html", description: "Forza Horizon 6 Standard Edition for Windows/Xbox Series X/S, delivered as an XBOX Live key.", noGameId: true, bundles: [{ label: "Forza Horizon 6 Standard Edition (Windows/Xbox Series X/S) XBOX Live Key", amount: 5300, originalAmount: 5499 }] },
+    residentevil: { name: "Resident Evil Requiem", item: "Xbox Series X/S Xbox Live Key", logo: "https://wallpapercave.com/wp/wp15649795.jpg", page: "resident-evil-requiem.html", description: "Resident Evil Requiem for Xbox Series X/S, delivered as an Xbox Live activation key.", noGameId: true, bundles: [{ label: "Resident Evil Requiem (Xbox Series X/S) Xbox Live Key", amount: 5550, originalAmount: 6268 }] }
   }
 };
 
@@ -385,7 +386,7 @@ function readLocalOrders() {
   }
 }
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"], ["residentevil", "Resident Evil", "resident-evil-requiem.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -555,7 +556,8 @@ export function initCatalogFilters() {
     minecraftpc: "key",
     gta5: "key",
     forza5: "key",
-    forza6: "key"
+    forza6: "key",
+    residentevil: "key"
   };
   const requestedFilter = new URLSearchParams(window.location.search).get("filter");
   let activeFilter = ["all", "topup", "key"].includes(requestedFilter) ? requestedFilter : "all";

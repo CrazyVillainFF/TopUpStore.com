@@ -52,3 +52,5 @@
 /* Keep the UT Coin artwork compact anywhere it appears in controls. */
 .ut-coin-inline{display:inline-block!important;width:20px!important;height:20px!important;max-width:20px!important;object-fit:contain!important;flex:0 0 20px!important;border-radius:50%}
 .points-pill{max-width:118px;line-height:1.15;white-space:normal}
+
+.product-discount-badge{display:inline-flex;align-items:center;margin-bottom:8px;padding:7px 11px;border:1px solid rgba(49,208,159,.55);border-radius:6px;background:rgba(49,208,159,.13);color:#8ff0d1;font-size:.82rem;font-weight:900;text-transform:uppercase;animation:discount-pulse 2.4s ease-in-out infinite}.resident-page .gta-logo-wrap{overflow:hidden;padding:0;background:#070b0f}.resident-page .gta-logo-wrap img{object-fit:cover}.resident-page .gta-product-hero{background:linear-gradient(180deg,rgba(3,10,15,.22),rgba(3,10,15,.92)),url('https://wallpapercave.com/wp/wp15649778.png') center/cover}.resident-page .gta-instructions li{padding-left:4px}@keyframes discount-pulse{50%{box-shadow:0 0 0 5px rgba(49,208,159,.07)}}
