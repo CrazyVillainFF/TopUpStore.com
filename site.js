@@ -761,7 +761,8 @@ export function initRedeem() {
           reward: "Google Playstore Redeem Code",
           coinsUsed: selected.coins,
           redeemValue: selected.value,
-          status: "Pending",
+          status: "Pending Verification",
+          redeemCode: "Pending",
           createdAt: serverTimestamp()
         };
         await withTimeout(update(dbRef(database), updates), "Firebase could not save the redemption. Check your Realtime Database rules and try again.", 15000);
@@ -808,7 +809,7 @@ function statusClass(status) {
 
 function normalizedOrderStatus(status) {
   const value = String(status || "Pending Verification").trim();
-  if (/^complete$/i.test(value)) return "Completed";
+  if (/^(complete|completed|success)$/i.test(value)) return "Completed";
   if (/^payment verified$/i.test(value)) return "Payment Verified";
   if (/^reject(ed)?$/i.test(value)) return "Rejected";
   if (/^pending$/i.test(value)) return "Pending Verification";
@@ -923,7 +924,7 @@ async function showYourOrdersModal() {
           <small>Delivery email: ${escapeHtml(order.email || order.accountEmail || "")}</small>
           <div class="redeem-code-space">
             <span>Redeem code</span>
-            <strong>${order.redeemCode ? escapeHtml(order.redeemCode) : "Waiting for redeem code"}</strong>
+            <strong>${order.redeemCode && !/^(pending|not assigned)$/i.test(String(order.redeemCode).trim()) ? escapeHtml(order.redeemCode) : "Waiting for redeem code"}</strong>
           </div>
         </div>
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(normalizedOrderStatus(order.status))}</span>
