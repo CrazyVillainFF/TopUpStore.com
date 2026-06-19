@@ -403,7 +403,12 @@ function isDigitalKeyOrder(order) {
 function menuHtml(active, isLoggedIn = false) {
   const orders = isLoggedIn ? '<button type="button" class="menu-orders" data-your-orders>Your Orders</button>' : "";
   const logout = isLoggedIn ? '<button type="button" class="menu-logout" data-logout>Logout</button>' : "";
-  return `<div class="mobile-menu-panel" data-mobile-menu>${navHtml(active)}${orders}${logout}</div>`;
+  return `<div class="mobile-menu-panel" data-mobile-menu>
+    <a class="${active === "index" ? "active" : ""}" href="index.html">Home</a>
+    <a href="index.html?filter=topup#games">Game Topup</a>
+    <a href="index.html?filter=key#games">Game Key</a>
+    ${orders}${logout}
+  </div>`;
 }
 
 function escapeHtml(value) {
@@ -552,7 +557,8 @@ export function initCatalogFilters() {
     forza5: "key",
     forza6: "key"
   };
-  let activeFilter = "all";
+  const requestedFilter = new URLSearchParams(window.location.search).get("filter");
+  let activeFilter = ["all", "topup", "key"].includes(requestedFilter) ? requestedFilter : "all";
 
   cards.forEach((card) => {
     const action = card.querySelector("[data-open-order]");
@@ -582,6 +588,13 @@ export function initCatalogFilters() {
     });
     apply();
   }));
+
+  filterButtons.forEach((button) => {
+    const selected = button.dataset.gameFilter === activeFilter;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  apply();
 }
 
 export function initOrderModal() {
