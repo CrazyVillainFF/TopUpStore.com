@@ -916,6 +916,15 @@ async function showYourOrdersModal() {
       list.innerHTML = '<div class="notice">No orders yet.</div>';
       return;
     }
+    const redemptionCode = (order) => {
+      const savedCode = String(order.redeemCode || "").trim();
+      const legacyValue = String(order.reward || "").trim();
+      const legacyCode = legacyValue && !/google\s*play(?:store)?\s*(?:redeem\s*)?(?:code)?/i.test(legacyValue)
+        ? legacyValue
+        : "";
+      const code = savedCode || legacyCode;
+      return code && !/^(pending|not assigned)$/i.test(code) ? code : "Waiting for redeem code";
+    };
     list.innerHTML = history.map((order) => order.historyType === "redemption" ? `
       <article class="user-order-card redemption-order-card">
         <div class="redemption-order-copy">
@@ -924,7 +933,7 @@ async function showYourOrdersModal() {
           <small>Delivery email: ${escapeHtml(order.email || order.accountEmail || "")}</small>
           <div class="redeem-code-space">
             <span>Redeem code</span>
-            <strong>${order.redeemCode && !/^(pending|not assigned)$/i.test(String(order.redeemCode).trim()) ? escapeHtml(order.redeemCode) : "Waiting for redeem code"}</strong>
+            <strong>${escapeHtml(redemptionCode(order))}</strong>
           </div>
         </div>
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(normalizedOrderStatus(order.status))}</span>
