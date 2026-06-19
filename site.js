@@ -870,12 +870,15 @@ async function showYourOrdersModal() {
   const currentUid = auth.currentUser.uid;
   const currentEmail = (auth.currentUser.email || "").toLowerCase();
   let remoteOrders = [];
-  let remoteRedemptions = [];
+  let uidRedemptions = [];
+  let emailRedemptions = [];
   let stopOrders = null;
-  let stopRedemptions = null;
+  let stopUidRedemptions = null;
+  let stopEmailRedemptions = null;
   const closeOrders = () => {
     if (stopOrders) stopOrders();
-    if (stopRedemptions) stopRedemptions();
+    if (stopUidRedemptions) stopUidRedemptions();
+    if (stopEmailRedemptions) stopEmailRedemptions();
     modal.remove();
   };
   modal.querySelector("[data-close-orders]").addEventListener("click", closeOrders);
@@ -893,8 +896,15 @@ async function showYourOrdersModal() {
       return order.uid === currentUid || accountEmail === currentEmail || customerEmail === currentEmail;
     });
     orders.sort((a, b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
-    const redemptions = remoteRedemptions
-      .filter((redemption) => redemption.uid === currentUid)
+    const redemptionMap = new Map();
+    [...emailRedemptions, ...uidRedemptions].forEach((redemption) => {
+      if (redemption.id) redemptionMap.set(redemption.id, redemption);
+    });
+    const redemptions = [...redemptionMap.values()]
+      .filter((redemption) => {
+        const accountEmail = String(redemption.accountEmail || redemption.email || "").toLowerCase();
+        return redemption.uid === currentUid || accountEmail === currentEmail;
+      })
       .map((redemption) => ({ ...redemption, historyType: "redemption" }));
     const history = [
       ...orders.map((order) => ({ ...order, historyType: "order" })),
@@ -938,13 +948,23 @@ async function showYourOrdersModal() {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
   const userRedemptionsQuery = query(dbRef(database, "redemptions"), orderByChild("uid"), equalTo(currentUid));
-  stopRedemptions = onValue(userRedemptionsQuery, (snapshot) => {
-    remoteRedemptions = [];
-    snapshot.forEach((child) => remoteRedemptions.push({ id: child.key, ...child.val() }));
+  stopUidRedemptions = onValue(userRedemptionsQuery, (snapshot) => {
+    uidRedemptions = [];
+    snapshot.forEach((child) => uidRedemptions.push({ id: child.key, ...child.val() }));
     renderHistory();
   }, (error) => {
-    console.error("Could not load redemptions", error);
+    console.error("Could not load redemptions by UID", error);
   });
+  if (currentEmail) {
+    const emailRedemptionsQuery = query(dbRef(database, "redemptions"), orderByChild("accountEmail"), equalTo(currentEmail));
+    stopEmailRedemptions = onValue(emailRedemptionsQuery, (snapshot) => {
+      emailRedemptions = [];
+      snapshot.forEach((child) => emailRedemptions.push({ id: child.key, ...child.val() }));
+      renderHistory();
+    }, (error) => {
+      console.error("Could not load redemptions by email", error);
+    });
+  }
 }
 
 export async function initAdminPage() {

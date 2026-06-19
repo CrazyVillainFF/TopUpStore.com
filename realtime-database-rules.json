@@ -12,8 +12,8 @@
       }
     },
     "redemptions": {
-      ".read": "auth != null && ((query.orderByChild == 'uid' && query.equalTo == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
-      ".indexOn": ["uid", "status"],
+      ".read": "auth != null && ((query.orderByChild == 'uid' && query.equalTo == auth.uid) || (query.orderByChild == 'accountEmail' && query.equalTo == auth.token.email) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')",
+      ".indexOn": ["uid", "accountEmail", "status"],
       "$redemptionId": {
         ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com')"
       }
