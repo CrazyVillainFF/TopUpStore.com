@@ -335,6 +335,8 @@ export async function saveOrder(order) {
     screenshotUrl: "",
     screenshotStatus: "Uploading",
     pointsEarned,
+    deliveryType: isDigitalKeyOrder(order) ? "gameKey" : "topup",
+    gameKey: isDigitalKeyOrder(order) ? "Pending" : "",
     paymentReference: order.reference,
     status: "Pending Verification",
     createdAt: serverTimestamp()
@@ -389,6 +391,17 @@ function readLocalOrders() {
 function navHtml(active) {
   const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
+}
+
+function isDigitalGameKey(game) {
+  return Boolean(game && /key/i.test(String(game.item || "")));
+}
+
+function isDigitalKeyOrder(order) {
+  return Boolean(order && (
+    order.deliveryType === "gameKey" ||
+    /key/i.test(String(order.item || order.bundle || ""))
+  ));
 }
 
 function menuHtml(active, isLoggedIn = false) {
@@ -598,20 +611,22 @@ export function initOrderModal() {
     if (!(await requireLogin())) return;
     currentKey = button.dataset.openOrder;
     const game = TopupData.games[currentKey];
+    const digitalKey = isDigitalGameKey(game);
     title.textContent = `Order ${game.name} ${game.item}`;
-    username.value = auth.currentUser?.displayName || ""; player.value = ""; customerEmail.value = auth.currentUser?.email || ""; offer.checked = true;
+    username.value = auth.currentUser?.displayName || (auth.currentUser?.email || "Customer").split("@")[0]; player.value = ""; customerEmail.value = auth.currentUser?.email || ""; offer.checked = true;
+    username.closest("label").style.display = digitalKey ? "none" : "";
     player.closest("label").style.display = game.noGameId ? "none" : "";
     player.required = !game.noGameId;
     offer.closest("label").style.display = game.noGameId ? "none" : "";
     fillBundleSelect(bundle, currentKey); update(); modal.classList.add("open");
-    (game.noGameId ? username : player).focus();
+    (digitalKey ? customerEmail : (game.noGameId ? username : player)).focus();
   }));
   modal.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => modal.classList.remove("open")));
   bundle.addEventListener("change", update); offer.addEventListener("change", update);
   pay.addEventListener("click", async () => {
     if (!currentKey) return;
     const game = TopupData.games[currentKey];
-    if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
+    if (!isDigitalGameKey(game) && !username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
     if (!game.noGameId && !player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
     if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
@@ -640,12 +655,18 @@ export function initGamePage(gameKey) {
   const offer = form.querySelector("[data-offer]");
   const summary = form.querySelector("[data-summary]");
   const submit = form.querySelector("button[type='submit']");
+  const digitalKey = isDigitalGameKey(game);
   if (submit) submit.textContent = "Continue to Manual Payment";
   if (game.noGameId && player) {
     player.closest("label").style.display = "none";
     player.required = false;
   }
   if (game.noGameId && offer) offer.closest("label").style.display = "none";
+  if (digitalKey && username) {
+    username.closest("label").style.display = "none";
+    username.required = false;
+    username.value = auth.currentUser?.displayName || (auth.currentUser?.email || "Customer").split("@")[0];
+  }
   fillBundleSelect(bundle, gameKey);
   const update = () => {
     if (bundle.value === "") { summary.textContent = "Select a bundle to calculate the final payable amount."; return; }
@@ -660,7 +681,7 @@ export function initGamePage(gameKey) {
     event.preventDefault();
     if (!(await requireLogin())) return;
     if (customerEmail && !customerEmail.value.trim()) customerEmail.value = auth.currentUser?.email || "";
-    if (!username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
+    if (!digitalKey && !username.value.trim()) { alert("Please enter your game ID name."); username.focus(); return; }
     if (!game.noGameId && !player.value.trim()) { alert("Please enter your game ID."); player.focus(); return; }
     if (!emailValid(customerEmail.value.trim())) { alert("Please enter your active email."); customerEmail.focus(); return; }
     if (bundle.value === "") { alert("Please select a bundle."); return; }
@@ -876,10 +897,12 @@ async function showYourOrdersModal() {
   let stopOrders = null;
   let stopUidRedemptions = null;
   let stopEmailRedemptions = null;
+  let refreshTimer = null;
   const closeOrders = () => {
     if (stopOrders) stopOrders();
     if (stopUidRedemptions) stopUidRedemptions();
     if (stopEmailRedemptions) stopEmailRedemptions();
+    if (refreshTimer) clearInterval(refreshTimer);
     modal.remove();
   };
   modal.querySelector("[data-close-orders]").addEventListener("click", closeOrders);
@@ -944,19 +967,38 @@ async function showYourOrdersModal() {
           <strong>${escapeHtml(order.game || "")} - ${escapeHtml(order.bundle || "")}</strong>
           <span>${money(order.amount || 0)} | ${escapeHtml(order.playerId || "No game ID required")}</span>
           <small>UTR: ${escapeHtml(order.utr || "")} | UT Coins: ${Number(order.pointsEarned) || 0}</small>
+          ${isDigitalKeyOrder(order) ? `<div class="redeem-code-space game-key-space"><span>Your Game Key</span><strong>${escapeHtml(order.gameKey && !/^(pending|not assigned)$/i.test(String(order.gameKey).trim()) ? order.gameKey : "Waiting for game key")}</strong></div>` : ""}
         </div>
         <span class="status-badge ${statusClass(order.status)}">${escapeHtml(normalizedOrderStatus(order.status))}</span>
       </article>
     `).join("");
   };
   renderHistory();
-  stopOrders = onValue(dbRef(database, "orders"), (snapshot) => {
+  const applyOrdersSnapshot = (snapshot) => {
     remoteOrders = [];
-    snapshot.forEach((child) => remoteOrders.push({ id: child.key, ...child.val() }));
+    snapshot.forEach((child) => {
+      const order = { id: child.key, ...child.val() };
+      remoteOrders.push(order);
+      if (isDigitalKeyOrder(order) && (!order.deliveryType || !Object.prototype.hasOwnProperty.call(order, "gameKey"))) {
+        update(dbRef(database, `orders/${child.key}`), {
+          deliveryType: "gameKey",
+          gameKey: order.gameKey || "Pending"
+        }).catch((error) => console.warn("Could not repair game-key order", error));
+      }
+    });
     renderHistory();
-  }, (error) => {
+  };
+  stopOrders = onValue(dbRef(database, "orders"), applyOrdersSnapshot, (error) => {
     list.innerHTML = `<div class="notice">${escapeHtml(readableOrderError(error))}</div>`;
   });
+  const refreshOrders = async () => {
+    try {
+      applyOrdersSnapshot(await get(dbRef(database, "orders")));
+    } catch (error) {
+      console.warn("Could not refresh orders", error);
+    }
+  };
+  refreshTimer = setInterval(refreshOrders, 5000);
   const userRedemptionsQuery = query(dbRef(database, "redemptions"), orderByChild("uid"), equalTo(currentUid));
   stopUidRedemptions = onValue(userRedemptionsQuery, (snapshot) => {
     uidRedemptions = [];
