@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://top-up-store-com.vercel.app/sitemap.xml
