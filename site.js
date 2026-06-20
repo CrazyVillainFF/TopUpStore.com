@@ -41,11 +41,14 @@ export const TopupData = {
 
 let currentUser = undefined;
 let currentProfileCache = null;
+let stopPointsOrders = null;
+let stopPointsRedemptions = null;
 export const authReady = new Promise((resolve) => onAuthStateChanged(auth, (user) => { currentUser = user; resolve(user); }));
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   currentProfileCache = null;
   updateHeaderFromAuth();
+  startLivePointsSync(user);
 });
 
 function withTimeout(promise, message = "Request timed out. Check your setup and internet connection.", ms = 12000) {
@@ -213,8 +216,7 @@ export async function currentPoints() {
   try {
     await authReady;
     if (!auth.currentUser) return 0;
-    const snapshot = await get(dbRef(database, `users/${auth.currentUser.uid}/points`));
-    return snapshot.exists() ? Number(snapshot.val()) || 0 : 0;
+    return await calculateUserPoints(auth.currentUser.uid);
   } catch {
     return 0;
   }
@@ -489,12 +491,13 @@ function updateHeaderFromAuth() {
   bindYourOrders(header);
   bindMobileMenu(header);
   withTimeout(ensureUserProfile(userForHeader), "Profile load skipped.", 5000)
-    .then((profile) => {
+    .then(async (profile) => {
       if (!auth.currentUser || auth.currentUser.uid !== userForHeader.uid) return;
       header.innerHTML = headerShell(active, authHtmlForUser(userForHeader, profile));
       bindSignOut(header);
       bindYourOrders(header);
       bindMobileMenu(header);
+      await refreshPoints();
     })
     .catch((error) => console.warn("Profile load failed", error));
 }
@@ -848,6 +851,79 @@ function normalizedOrderStatus(status) {
   return value;
 }
 
+function configuredOrderPoints(order) {
+  const configured = Number(order?.pointsEarned);
+  if (Number.isFinite(configured) && configured >= 0) return Math.floor(configured);
+  return Math.floor(Math.max(0, Number(order?.amount) || 0) * POINTS_PER_RUPEE);
+}
+
+function totalPointsFromSnapshots(ordersSnapshot, redemptionsSnapshot, uid) {
+  let earned = 0;
+  ordersSnapshot?.forEach((child) => {
+    const order = child.val();
+    if (order?.uid === uid && normalizedOrderStatus(order?.status) === "Completed") {
+      earned += configuredOrderPoints(order);
+    }
+  });
+  let redeemed = 0;
+  redemptionsSnapshot?.forEach((child) => {
+    const redemption = child.val();
+    if (redemption?.uid === uid && normalizedOrderStatus(redemption?.status) !== "Rejected") {
+      redeemed += Math.max(0, Number(redemption.coinsUsed) || 0);
+    }
+  });
+  return Math.max(0, earned - redeemed);
+}
+
+async function saveCalculatedPoints(uid, points) {
+  const pointsRef = dbRef(database, `users/${uid}/points`);
+  const saved = await get(pointsRef).catch(() => null);
+  if (saved?.exists() && Number(saved.val()) === points) return;
+  await update(dbRef(database, `users/${uid}`), {
+    points,
+    pointsUpdatedAt: serverTimestamp()
+  });
+}
+
+async function calculateUserPoints(uid) {
+  if (!uid) return 0;
+  const [ordersSnapshot, redemptionsSnapshot] = await Promise.all([
+    get(query(dbRef(database, "orders"), orderByChild("uid"), equalTo(uid))),
+    get(query(dbRef(database, "redemptions"), orderByChild("uid"), equalTo(uid)))
+  ]);
+  const points = totalPointsFromSnapshots(ordersSnapshot, redemptionsSnapshot, uid);
+  await saveCalculatedPoints(uid, points).catch((error) => console.warn("Could not save calculated UT Coins", error));
+  return points;
+}
+
+function startLivePointsSync(user) {
+  if (stopPointsOrders) stopPointsOrders();
+  if (stopPointsRedemptions) stopPointsRedemptions();
+  stopPointsOrders = null;
+  stopPointsRedemptions = null;
+  if (!user) return;
+
+  let ordersSnapshot = null;
+  let redemptionsSnapshot = null;
+  const sync = async () => {
+    if (!ordersSnapshot || !redemptionsSnapshot || auth.currentUser?.uid !== user.uid) return;
+    const points = totalPointsFromSnapshots(ordersSnapshot, redemptionsSnapshot, user.uid);
+    document.querySelectorAll("[data-points]").forEach((node) => { node.innerHTML = pointsMarkup(points); });
+    if (currentProfileCache?.uid === user.uid) currentProfileCache.points = points;
+    await saveCalculatedPoints(user.uid, points).catch((error) => console.warn("Could not sync UT Coins", error));
+  };
+  stopPointsOrders = onValue(
+    query(dbRef(database, "orders"), orderByChild("uid"), equalTo(user.uid)),
+    (snapshot) => { ordersSnapshot = snapshot; sync(); },
+    (error) => console.warn("UT Coin order sync failed", error)
+  );
+  stopPointsRedemptions = onValue(
+    query(dbRef(database, "redemptions"), orderByChild("uid"), equalTo(user.uid)),
+    (snapshot) => { redemptionsSnapshot = snapshot; sync(); },
+    (error) => console.warn("UT Coin redemption sync failed", error)
+  );
+}
+
 async function recalculateUserPoints(uid) {
   if (!uid) return;
   const snapshot = await get(dbRef(database, "orders"));
@@ -855,7 +931,7 @@ async function recalculateUserPoints(uid) {
   snapshot.forEach((child) => {
     const order = child.val();
     if (order?.uid === uid && normalizedOrderStatus(order?.status) === "Completed") {
-      total += Number(order.pointsEarned) || Math.floor(Number(order.amount || 0) * POINTS_PER_RUPEE);
+      total += configuredOrderPoints(order);
     }
   });
   const redemptionsSnapshot = await get(dbRef(database, "redemptions"));

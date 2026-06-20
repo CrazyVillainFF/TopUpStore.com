@@ -5,7 +5,7 @@
       ".indexOn": ["uid", "accountEmail", "status"],
       "$orderId": {
         ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || auth.token.email == 'unlimitedtopup001@gmail.com' || auth.token.email == 'vishnubangaru001@gmail.com' || (data.exists() && data.child('uid').val() == auth.uid && newData.child('uid').val() == data.child('uid').val() && newData.child('status').val() == data.child('status').val() && newData.child('pointsEarned').val() == data.child('pointsEarned').val() && ((!data.child('gameKey').exists() && newData.child('gameKey').val() == 'Pending') || newData.child('gameKey').val() == data.child('gameKey').val())))",
-        ".validate": "newData.hasChildren(['uid', 'game', 'bundle', 'amount', 'status', 'createdAt']) && newData.child('uid').isString() && newData.child('game').isString() && newData.child('bundle').isString() && newData.child('amount').isNumber() && newData.child('status').isString()"
+        ".validate": "newData.hasChildren(['uid', 'game', 'bundle', 'amount', 'status', 'createdAt']) && newData.child('uid').isString() && newData.child('game').isString() && newData.child('bundle').isString() && newData.child('amount').isNumber() && newData.child('status').isString() && (!newData.child('pointsEarned').exists() || (newData.child('pointsEarned').isNumber() && newData.child('pointsEarned').val() >= 0))"
       }
     },
     "users": {
