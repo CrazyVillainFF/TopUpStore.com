@@ -388,7 +388,7 @@ function readLocalOrders() {
   }
 }
 function navHtml(active) {
-  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"], ["residentevil", "Resident Evil", "resident-evil-requiem.html"]];
+  const nav = [["index", "Home", "index.html"], ["freefire", "Free Fire", "freefire.html"], ["bgmi", "BGMI", "bgmi.html"], ["pubg", "PUBG", "pubg.html"], ["valorant", "Valorant", "valorant.html"], ["minecraft", "Minecoins", "minecraft.html"], ["minecraftpc", "Minecraft PC", "minecraft-pc.html"], ["gta5", "GTA 5", "gta5.html"], ["gta6", "GTA 6", "gta6-coming-soon.html"], ["forza5", "Forza Horizon 5", "forza-horizon-5.html"], ["forza6", "Forza Horizon 6", "forza-horizon-6.html"], ["residentevil", "Resident Evil", "resident-evil-requiem.html"]];
   return nav.map(([key, label, href]) => `<a class="${active === key ? "active" : ""}" href="${href}">${label}</a>`).join("");
 }
 
@@ -558,6 +558,7 @@ export function initCatalogFilters() {
     minecraft: "topup",
     minecraftpc: "key",
     gta5: "key",
+    gta6: "key",
     forza5: "key",
     forza6: "key",
     residentevil: "key"
@@ -567,7 +568,8 @@ export function initCatalogFilters() {
 
   cards.forEach((card) => {
     const action = card.querySelector("[data-open-order]");
-    card.dataset.category = keyCategories[action?.dataset.openOrder] || "topup";
+    const key = card.dataset.productKey || action?.dataset.openOrder;
+    card.dataset.category = keyCategories[key] || "topup";
   });
 
   const apply = () => {
