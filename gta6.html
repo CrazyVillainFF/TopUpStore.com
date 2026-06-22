@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTA 6 Coming Soon | Unlimited Topup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260622-gta6-small-logo">
+</head>
+<body>
+<header class="site-header" data-header data-active="gta6">
+  <div class="page-shell navbar">
+    <a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Independent digital game store</span></span></a>
+    <nav class="nav-links"><a href="index.html">Home</a><a href="freefire.html">Free Fire</a><a href="bgmi.html">BGMI</a><a href="pubg.html">PUBG</a><a href="valorant.html">Valorant</a><a href="minecraft.html">Minecoins</a><a href="minecraft-pc.html">Minecraft PC</a><a href="gta5.html">GTA 5</a><a class="active" href="gta6.html">GTA 6</a></nav>
+    <div class="auth-area"><span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span></div>
+  </div>
+</header>
+
+<main class="gta-page gta6-page">
+  <section class="gta-product-hero gta6-hero" style="background:linear-gradient(90deg,rgba(4,10,17,.96),rgba(60,17,68,.62)),url('https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_01_landscape.12x2gvspcm_3m.jpg?akim=1&amp;imdensity=1&amp;imwidth=1280') center/cover">
+    <div class="page-shell gta-product-grid">
+      <div class="gta-logo-wrap gta6-logo-wrap"><img data-game-logo src="https://4kwallpapers.com/images/walls/thumbs_3t/13622.png" alt="GTA 6 logo"></div>
+      <div class="gta-product-copy">
+        <div class="kicker">Rockstar Games • Coming soon</div>
+        <span class="coming-soon-badge product-coming-soon-badge">Coming Soon</span>
+        <h1>GTA 6 <span>Grand Theft Auto VI notifications</span></h1>
+        <p data-game-description>Be first in line for updates from Unlimited Topup. Turn on notifications and we will inform you when GTA 6 is available.</p>
+        <div class="gta-price gta6-price"><strong>Coming Soon</strong></div>
+        <a class="link-btn success gta-buy" href="#notify">Turn On Notification</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="gta-gallery-section" aria-labelledby="gta6-screenshots-title">
+    <div class="page-shell"><div class="section-head"><h2 id="gta6-screenshots-title">GTA 6 Screenshots</h2><p>Swipe horizontally to explore the latest GTA 6 artwork.</p></div></div>
+    <div class="gta-gallery gta6-gallery" tabindex="0">
+      <div class="gta-gallery-track">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_03_landscape.0419q._86ukpt.jpg?akim=1&imdensity=1&imwidth=1280" alt="GTA 6 Jason and Lucia screenshot 1">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_02_landscape.0cosv-uzbpt91.jpg" alt="GTA 6 Jason and Lucia screenshot 2">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_01_landscape.12x2gvspcm_3m.jpg?akim=1&imdensity=1&imwidth=1280" alt="GTA 6 Jason and Lucia screenshot 3">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/Cal_Hampton_landscape.17k7bnt3myg.2.jpg" alt="GTA 6 Cal Hampton screenshot">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/Brian_Heder_landscape.0a-egj5b8yo1q.jpg?akim=1&imdensity=1&imwidth=1280" alt="GTA 6 Brian Heder screenshot">
+        <img src="https://www.rockstargames.com/VI/_next/static/media/DreQuan_Priest_landscape.0_b7hszyze6cy.jpg" alt="GTA 6 DreQuan Priest screenshot">
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="notify">
+    <div class="page-shell gta6-notify-grid">
+      <div class="gta-instructions gta6-notify-copy">
+        <h2>Get notified when GTA 6 is available</h2>
+        <p>There is no Buy Now button on this coming soon page. Submit your contact details and we will save your request securely in Firebase Realtime Database.</p>
+      </div>
+      <form class="order-card gta6-notify-card" data-gta6-notification-form>
+        <h2>Turn On Notification</h2>
+        <p class="muted">Enter accurate contact details for GTA 6 availability alerts.</p>
+        <div class="form-grid">
+          <label class="full">Name<input data-notify-name autocomplete="name" placeholder="Enter your name" required></label>
+          <label class="full">Email<input data-notify-email type="email" autocomplete="email" placeholder="Enter your email" required></label>
+          <label class="full">Mobile number<input data-notify-mobile type="tel" autocomplete="tel" placeholder="Enter your mobile number" required></label>
+          <button class="btn success full" type="submit">Turn On Notification</button>
+          <div class="summary-box full notify-status" data-notify-status aria-live="polite">We will only use these details for GTA 6 availability updates.</div>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="footer"><div class="page-shell"><span>Unlimited Topup</span><span>Need Help? Contact Us: <a href="mailto:unlimitedtopup001@gmail.com">unlimitedtopup001@gmail.com</a> <strong>24/7 Available</strong> | <a href="store-policies.html">Store Policies</a></span></div></footer>
+<script type="module">import { renderHeader, initGta6NotificationPage } from './site.js?v=20260622-gta6-small-logo'; renderHeader('gta6'); initGta6NotificationPage();</script>
+</body>
+</html>

@@ -56,6 +56,158 @@
 .product-discount-badge{display:inline-flex;align-items:center;margin-bottom:8px;padding:7px 11px;border:1px solid rgba(49,208,159,.55);border-radius:6px;background:rgba(49,208,159,.13);color:#8ff0d1;font-size:.82rem;font-weight:900;text-transform:uppercase;animation:discount-pulse 2.4s ease-in-out infinite}.resident-page .gta-logo-wrap{overflow:hidden;padding:0;background:#070b0f}.resident-page .gta-logo-wrap img{object-fit:cover}.resident-page .gta-product-hero{background:linear-gradient(180deg,rgba(3,10,15,.22),rgba(3,10,15,.92)),url('https://wallpapercave.com/wp/wp15649778.png') center/cover}.resident-page .gta-instructions li{padding-left:4px}@keyframes discount-pulse{50%{box-shadow:0 0 0 5px rgba(49,208,159,.07)}}
 .store-disclosure{padding:48px 0;border-top:1px solid var(--line);background:#0a1018}.store-disclosure h2{margin:0 0 12px}.store-disclosure p{max-width:850px;color:var(--muted);line-height:1.7}.disclosure-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.disclosure-links a{color:var(--text);padding:10px 14px;border:1px solid var(--line);border-radius:6px;text-decoration:none}.disclosure-links a:hover{border-color:var(--accent);color:var(--accent)}
 .policy-page{padding:64px 0;background:#070c12;min-height:calc(100vh - 160px)}.policy-shell{max-width:900px}.policy-shell>h1{margin:8px 0 16px}.policy-intro{font-size:1.1rem;color:var(--muted);line-height:1.7}.policy-shell section{padding:24px 0;border-top:1px solid var(--line)}.policy-shell section h2{margin:0 0 10px}.policy-shell section p{margin:0;color:var(--muted);line-height:1.75}.policy-shell a{color:var(--accent)}.policy-nav{justify-content:space-between}
+.game-card {
+  position: relative;
+}
 
-.coming-soon-card{isolation:isolate;background:linear-gradient(180deg,rgba(10,14,24,.74),rgba(10,14,24,.94)),var(--card-bg) center/cover;border-color:rgba(255,74,200,.28)}
-.coming-soon-card:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,8,16,.18),rgba(4,8,16,.84));z-index:-1}.game-card .small-game-logo{width:96px;height:96px;object-fit:contain;background:rgba(255,255,255,.94);padding:8px}.coming-badge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;padding:7px 12px;background:linear-gradient(135deg,#ff4ac8,#ffd36a);color:#120816;font-weight:900;text-transform:uppercase;font-size:.76rem;letter-spacing:.08em}.gta6-coming-hero{background:linear-gradient(180deg,rgba(3,10,15,.28),rgba(3,10,15,.9)),url('https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_01_landscape.12x2gvspcm_3m.jpg?akim=1&imdensity=1&imwidth=1280') center/cover}.gta6-logo-wrap{width:min(220px,58vw);min-height:auto;margin:auto;padding:18px}.coming-soon-panel{border:1px solid var(--line);border-radius:8px;background:rgba(16,24,33,.9);padding:24px;box-shadow:var(--shadow)}.coming-soon-panel h2{margin:12px 0 8px}
+.hot-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 92, 92, 0.75);
+  border-radius: 6px;
+  background: #d92f3f;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(217, 47, 63, 0.32);
+  animation: hot-pulse 1.8s ease-in-out infinite;
+}
+
+.product-hot-badge {
+  position: static;
+  width: max-content;
+  margin-bottom: 10px;
+}
+
+.key-product-page .gta-product-hero {
+  background:
+    linear-gradient(90deg, rgba(4, 10, 17, 0.96), rgba(4, 10, 17, 0.68)),
+    var(--product-bg) center / cover;
+}
+
+.key-product-page .gta-logo-wrap {
+  overflow: hidden;
+  padding: 0;
+}
+
+.key-product-page .gta-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes hot-pulse {
+  50% {
+    transform: translateY(-2px);
+    box-shadow: 0 11px 28px rgba(217, 47, 63, 0.46);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hot-badge {
+    animation: none;
+  }
+}
+
+/* Unified square artwork: crop oversized logos and remove white framing. */
+.quick-row img,
+.game-card > img,
+.plan-card img {
+  object-fit: cover;
+  object-position: center;
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+.game-logo-panel {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  background: #0b1118;
+}
+
+.game-logo-panel img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+}
+
+.gta-logo-wrap,
+.key-product-page .gta-logo-wrap,
+.resident-page .gta-logo-wrap {
+  width: min(100%, 1080px);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: #0b1118;
+}
+
+.gta-logo-wrap img,
+.key-product-page .gta-logo-wrap img,
+.resident-page .gta-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* GTA 6 card/detail logo sizing update. */
+.game-card-touch-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.game-card .card-actions,
+.game-card .coming-soon-badge {
+  position: relative;
+  z-index: 2;
+}
+
+.game-card.coming-soon-card > img {
+  width: 96px;
+  height: 96px;
+  min-height: 0;
+  object-fit: contain;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.gta6-hero {
+  background:
+    linear-gradient(90deg, rgba(4, 10, 17, .96), rgba(60, 17, 68, .62)),
+    url('https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_01_landscape.12x2gvspcm_3m.jpg?akim=1&imdensity=1&imwidth=1280') center/cover;
+}
+
+.gta6-hero .gta6-logo-wrap {
+  width: min(220px, 65vw);
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.gta6-hero .gta6-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
