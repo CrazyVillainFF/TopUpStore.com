@@ -7,10 +7,12 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -34,7 +36,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        configureSystemBars();
+
         FrameLayout root = new FrameLayout(this);
+        keepContentBelowSystemBars(root);
         webView = new WebView(this);
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
@@ -44,9 +49,41 @@ public class MainActivity extends Activity {
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(progressBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(4)));
         setContentView(root);
+        root.requestApplyInsets();
 
         configureWebView(webView);
         webView.loadUrl(WEBSITE_URL);
+    }
+
+    private void configureSystemBars() {
+        Window window = getWindow();
+        int black = Color.rgb(8, 8, 8);
+
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        window.setStatusBarColor(black);
+        window.setNavigationBarColor(black);
+
+        View decorView = window.getDecorView();
+        decorView.setSystemUiVisibility(decorView.getSystemUiVisibility()
+                & ~View.SYSTEM_UI_FLAG_FULLSCREEN
+                & ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                & ~View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                & ~View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                & ~View.SYSTEM_UI_FLAG_IMMERSIVE
+                & ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(true);
+        }
+    }
+
+    private void keepContentBelowSystemBars(View root) {
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top = insets.getSystemWindowInsetTop();
+            int bottom = insets.getSystemWindowInsetBottom();
+            view.setPadding(0, top, 0, bottom);
+            return insets;
+        });
     }
 
     @SuppressLint("SetJavaScriptEnabled")
