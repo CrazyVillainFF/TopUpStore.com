@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>Unlimited Topup icon</title>
+  <rect width="512" height="512" rx="112" fill="#080808"/>
+  <rect x="42" y="42" width="428" height="428" rx="92" fill="none" stroke="#f5b82a" stroke-width="28"/>
+  <text x="256" y="304" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="166" font-weight="900" fill="#f5b82a">UT</text>
+</svg>
