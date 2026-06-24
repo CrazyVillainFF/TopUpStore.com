@@ -47,7 +47,7 @@
 
 .gta-product-hero{padding:46px 0 30px;background:linear-gradient(180deg,rgba(3,10,15,.25),rgba(3,10,15,.82))}.gta-product-grid{display:grid;grid-template-columns:280px minmax(0,1fr);gap:34px;align-items:center}.gta-logo-wrap{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.96);display:grid;place-items:center;padding:28px;box-shadow:var(--shadow)}.gta-logo-wrap img{width:100%;height:100%;object-fit:contain}.gta-product-copy h1{font-size:clamp(2.2rem,5vw,4.4rem);margin:8px 0 16px}.gta-product-copy h1 span{display:block;color:var(--muted);font-size:.42em;margin-top:9px}.gta-product-copy p{max-width:700px;color:#d0d8e3;line-height:1.7}.gta-price{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:24px 0}.gta-price s{color:var(--muted);font-size:1.25rem}.gta-price strong{font-size:2.35rem;color:#dff8ee}.gta-price span{color:var(--green);font-weight:900}.gta-buy{background:linear-gradient(135deg,#31d09f,#1687d9);border:0;color:#031813;min-width:180px}.gta-gallery-section{padding:32px 0}.gta-gallery{overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;padding:0 max(16px,calc((100vw - 1180px)/2)) 18px}.gta-gallery-track{display:flex;gap:16px;width:max-content;animation:gta-scroll 32s linear infinite alternate}.gta-gallery:hover .gta-gallery-track,.gta-gallery:focus .gta-gallery-track{animation-play-state:paused}.gta-gallery img{width:min(72vw,540px);aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:1px solid var(--line);scroll-snap-align:start;box-shadow:0 16px 42px rgba(0,0,0,.32)}@keyframes gta-scroll{from{transform:translateX(0)}to{transform:translateX(-25%)}}.gta-checkout-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,.8fr);gap:24px;align-items:start}.gta-instructions{margin-top:22px;border:1px solid var(--line);border-radius:8px;background:rgba(16,24,33,.9);padding:22px}.gta-instructions h2{color:#fff3c4}.gta-instructions ol{margin:0;padding-left:22px;color:#d7e1eb;line-height:1.75}.gta-instructions a{color:#70d7ff}.gta-page .plan-grid{grid-template-columns:1fr}.gta-page .plan-card{min-height:104px}.gta-page .plan-card img{width:76px;height:76px}.gta-page .plan-card s{color:var(--muted);margin-right:8px}@media(max-width:760px){.gta-product-grid,.gta-checkout-grid{grid-template-columns:1fr}.gta-logo-wrap{width:min(220px,65vw);margin:0 auto}.gta-product-copy{text-align:center}.gta-product-copy p{margin-left:auto;margin-right:auto}.gta-price{justify-content:center}.gta-gallery-track{animation:none}.gta-gallery img{width:84vw}.gta-instructions{padding:18px}}
 
-.catalog-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 22px}.catalog-search{position:relative;display:block;flex:1;max-width:520px}.catalog-search .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none}.catalog-search input{padding-left:44px;background:rgba(16,24,33,.94);min-height:50px}.catalog-filters{display:flex;align-items:center;gap:8px;padding:4px;border:1px solid var(--line);border-radius:8px;background:rgba(16,24,33,.9)}.catalog-filter{min-height:40px;padding:8px 14px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-weight:800;white-space:nowrap}.catalog-filter:hover{color:var(--text);background:rgba(255,255,255,.06)}.catalog-filter.active{color:#06120e;background:linear-gradient(135deg,var(--green),#35b7de)}.game-card[hidden]{display:none}.catalog-empty{margin-bottom:22px;border:1px dashed var(--line);border-radius:8px;padding:28px;text-align:center;background:rgba(16,24,33,.7)}.catalog-empty strong,.catalog-empty span{display:block}.catalog-empty span{margin-top:6px;color:var(--muted)}@media(max-width:700px){.catalog-toolbar{align-items:stretch;flex-direction:column}.catalog-search{max-width:none}.catalog-filters{display:grid;grid-template-columns:repeat(3,1fr)}.catalog-filter{padding:8px 6px;font-size:.82rem}}
+.catalog-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 22px}.catalog-search-wrap{position:relative;display:flex;align-items:center;gap:8px;flex:1;max-width:590px}.catalog-search{position:relative;display:block;flex:1;max-width:520px}.catalog-search .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none}.catalog-search input{padding-left:44px;background:rgba(16,24,33,.94);min-height:50px}.platform-filter-toggle{width:50px;height:50px;border:1px solid var(--line);border-radius:10px;background:rgba(16,24,33,.94);color:var(--text);font-size:1.35rem;font-weight:900;cursor:pointer}.platform-filter-toggle:hover,.platform-filter-toggle[aria-expanded="true"]{background:rgba(255,255,255,.08);border-color:rgba(76,211,194,.55)}.platform-filter-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:20;width:min(270px,92vw);padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(10,16,24,.98);box-shadow:0 18px 40px rgba(0,0,0,.38)}.platform-filter-option{width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--text);font-weight:800;text-align:left;cursor:pointer}.platform-filter-option:hover,.platform-filter-option.active{background:rgba(255,255,255,.08)}.platform-filter-option img,.platform-filter-option .platform-logo{width:22px;height:22px;min-width:22px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:rgba(255,255,255,.1);font-size:.85rem}.catalog-filters{display:flex;align-items:center;gap:8px;padding:4px;border:1px solid var(--line);border-radius:8px;background:rgba(16,24,33,.9)}.catalog-filter{min-height:40px;padding:8px 14px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-weight:800;white-space:nowrap}.catalog-filter:hover{color:var(--text);background:rgba(255,255,255,.06)}.catalog-filter.active{color:#06120e;background:linear-gradient(135deg,var(--green),#35b7de)}.game-card[hidden]{display:none!important}.catalog-empty{margin-bottom:22px;border:1px dashed var(--line);border-radius:8px;padding:28px;text-align:center;background:rgba(16,24,33,.7)}.catalog-empty strong,.catalog-empty span{display:block}.catalog-empty span{margin-top:6px;color:var(--muted)}@media(max-width:700px){.catalog-toolbar{align-items:stretch;flex-direction:column}.catalog-search-wrap{max-width:none}.catalog-search{max-width:none}.platform-filter-panel{left:0;right:auto;width:100%}.catalog-filters{display:grid;grid-template-columns:repeat(3,1fr)}.catalog-filter{padding:8px 6px;font-size:.82rem}}
 
 /* Keep the UT Coin artwork compact anywhere it appears in controls. */
 .ut-coin-inline{display:inline-block!important;width:20px!important;height:20px!important;max-width:20px!important;object-fit:contain!important;flex:0 0 20px!important;border-radius:50%}
@@ -162,57 +162,6 @@
   object-position: center;
 }
 
-/* GTA 6 card/detail logo sizing update. */
-.game-card-touch-link {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-}
-
-.game-card .card-actions,
-.game-card .coming-soon-badge {
-  position: relative;
-  z-index: 2;
-}
-
-.game-card.coming-soon-card > img {
-  width: 96px;
-  height: 96px;
-  min-height: 0;
-  object-fit: contain;
-  padding: 0;
-  border-radius: 8px;
-  background: transparent;
-}
-
-.gta6-hero {
-  background:
-    linear-gradient(90deg, rgba(4, 10, 17, .96), rgba(60, 17, 68, .62)),
-    url('https://www.rockstargames.com/VI/_next/static/media/Jason_and_Lucia_01_landscape.12x2gvspcm_3m.jpg?akim=1&imdensity=1&imwidth=1280') center/cover;
-}
-
-.gta6-hero .gta6-logo-wrap {
-  width: min(220px, 65vw);
-  margin: 0 auto;
-  overflow: hidden;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.gta6-hero .gta6-logo-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 0;
-  border-radius: 8px;
-  background: transparent;
-  box-shadow: none;
-}
-@media (max-width: 768px) {
-    body {
-        padding-top: 50px;
-    }
-}
+/* Platform filter click fix */
+.platform-filter-panel[hidden]{display:none!important;}
+.platform-filter-panel:not([hidden]){display:block!important;}

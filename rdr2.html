@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Red Dead Redemption 2 | Unlimited Topup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260619-coin-icon-size">
+</head>
+<body>
+<header class="site-header" data-header data-active="rdr2">
+  <div class="page-shell navbar">
+    <a class="brand" href="index.html"><span class="brand-mark">UT</span><span class="brand-text"><strong>Unlimited Topup</strong><span>Independent digital game store</span></span></a>
+    <nav class="nav-links"><a href="index.html">Home</a><a href="freefire.html">Free Fire</a><a href="bgmi.html">BGMI</a><a href="pubg.html">PUBG</a><a href="valorant.html">Valorant</a><a href="minecraft.html">Minecoins</a><a href="minecraft-pc.html">Minecraft PC</a><a href="gta5.html">GTA 5</a><a href="gta6.html">GTA 6</a><a class="active" href="rdr2.html">RDR 2</a></nav>
+    <div class="auth-area"><span class="auth-loading"><span class="mini-spinner"></span> Checking login...</span></div>
+  </div>
+</header>
+
+<main class="page-shell">
+  <section class="game-header">
+    <img src="https://www.pngarts.com/files/9/Red-Dead-Redemption-Logo-PNG-Image-Transparent-Background.png" alt="RDR 2 Logo" style="max-width: 200px; margin-bottom: 15px;">
+    <h1 data-game-name>Red Dead Redemption 2</h1>
+  </section>
+
+  <section class="section">
+    <div class="plan-grid">
+      <article class="plan-card">
+        <img src="https://www.pngarts.com/files/9/Red-Dead-Redemption-Logo-PNG-Image-Transparent-Background.png" alt="RDR 2 Logo">
+        <h3>Red Dead Redemption 2 - Standard Edition</h3>
+        <p><s>₹3329</s> <strong>₹2000</strong></p>
+        <button class="btn success" data-select-plan="0">Buy Now</button>
+      </article>
+      <article class="plan-card">
+        <img src="https://www.pngarts.com/files/9/Red-Dead-Redemption-Logo-PNG-Image-Transparent-Background.png" alt="RDR 2 Logo">
+        <h3>Red Dead Redemption 2 - Ultimate Edition</h3>
+        <p><s>₹7,699</s> <strong>₹3000</strong></p>
+        <button class="btn success" data-select-plan="1">Buy Now</button>
+      </article>
+      <article class="plan-card">
+        <img src="https://www.pngarts.com/files/9/Red-Dead-Redemption-Logo-PNG-Image-Transparent-Background.png" alt="RDR 2 Logo">
+        <h3>Red Dead Redemption 2 - Special Edition</h3>
+        <p><s>₹9037</s> <strong>₹4000</strong></p>
+        <button class="btn success" data-select-plan="2">Buy Now</button>
+      </article>
+    </div>
+  </section>
+
+  <form class="game-form form-grid" data-game-form style="margin-top: 40px;">
+    <label class="full">Rockstar Account Name<input data-username placeholder="Enter your Rockstar account name" required></label>
+    <label class="full">Enter Your Email<input data-customer-email type="email" placeholder="Enter your active email" required></label>
+    <label class="full">Selected Package
+      <select data-bundle aria-hidden="true" tabindex="-1" style="display:none;"></select>
+      <div data-selected-package-text style="padding: 12px; background: #101820; color: #fff; border: 1px solid #2b3a4a; border-radius: 8px; font-weight: bold;">Choose an RDR 2 edition above</div>
+    </label>
+    <label class="full check-row" style="display:none"><input type="checkbox" data-offer checked> Apply offer</label>
+    <div class="summary-box full" data-summary>Select a bundle to calculate the final payable amount.</div>
+    <button class="btn success full" type="submit">Proceed to Payment</button>
+  </form>
+
+  <section class="section" style="margin-top: 40px; padding: 20px; background: #1a1a1a; color: #fff; border-radius: 12px;">
+    <h2>How to Use Your Rockstar Key</h2>
+    <p>Red Dead Redemption 2 will be added to your Rockstar account / key will be delivered by email.</p>
+    <ol style="padding-left: 20px;">
+      <li>Complete your purchase and payment verification.</li>
+      <li>Your activation key will be sent to your active email.</li>
+      <li>Download and open Rockstar Games Launcher.</li>
+      <li>Sign in to your Rockstar Games account.</li>
+      <li>Click your profile icon in the launcher.</li>
+      <li>Select "Redeem Code".</li>
+      <li>Enter the activation key received by email.</li>
+      <li>Confirm the redemption.</li>
+      <li>Download and play Red Dead Redemption 2.</li>
+    </ol>
+  </section>
+</main>
+<footer class="footer"><div class="page-shell"><span>Unlimited Topup</span><span>Need Help? Contact Us: <a href="mailto:unlimitedtopup001@gmail.com">unlimitedtopup001@gmail.com</a> <strong>24/7 Available</strong></span></div></footer>
+<script>
+  // RDR 2 local fallback: works even before the module script finishes loading.
+  // Keeps Buy Now -> selected package -> scroll to form reliable on local file and hosted site.
+  window.UT_RDR2_PACKAGES = [
+    { label: 'Red Dead Redemption 2 Standard Edition', original: 3329, price: 2000 },
+    { label: 'Red Dead Redemption 2 Ultimate Edition', original: 7699, price: 3000 },
+    { label: 'Red Dead Redemption 2 Special Edition', original: 9037, price: 4000 }
+  ];
+
+  function utRdr2Money(value) {
+    return '₹' + Number(value).toLocaleString('en-IN');
+  }
+
+  function utRdr2EnsureOptions(select) {
+    if (!select) return;
+    if (select.options.length >= window.UT_RDR2_PACKAGES.length) return;
+    select.innerHTML = '<option value="">Choose an RDR 2 edition above</option>' +
+      window.UT_RDR2_PACKAGES.map(function (pkg, index) {
+        return '<option value="' + index + '">' + pkg.label + '</option>';
+      }).join('');
+  }
+
+  function utRdr2Select(index, shouldScroll) {
+    var pkg = window.UT_RDR2_PACKAGES[Number(index)];
+    if (!pkg) return;
+
+    var form = document.querySelector('[data-game-form]');
+    var select = document.querySelector('[data-bundle]');
+    var text = document.querySelector('[data-selected-package-text]');
+    var summary = document.querySelector('[data-summary]');
+    var username = document.querySelector('[data-username]');
+
+    utRdr2EnsureOptions(select);
+    if (select) {
+      select.value = String(index);
+      select.dataset.selectedIndex = String(index);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    var selectedText = pkg.label + ' | Original ' + utRdr2Money(pkg.original) + ' | Payable ' + utRdr2Money(pkg.price);
+    if (text) text.textContent = selectedText;
+    if (summary) summary.textContent = pkg.label + ' | Original ' + utRdr2Money(pkg.original) + ' | Total ' + utRdr2Money(pkg.price);
+
+    document.querySelectorAll('[data-select-plan]').forEach(function (button) {
+      button.classList.toggle('active', button.dataset.selectPlan === String(index));
+    });
+
+    if (shouldScroll && form) {
+      var y = form.getBoundingClientRect().top + window.pageYOffset - 110;
+      window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+      setTimeout(function () {
+        if (username && typeof username.focus === 'function') username.focus({ preventScroll: true });
+      }, 450);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    utRdr2EnsureOptions(document.querySelector('[data-bundle]'));
+    document.querySelectorAll('[data-select-plan]').forEach(function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        utRdr2Select(button.dataset.selectPlan, true);
+      });
+    });
+  });
+</script>
+<script type="module">
+  import { renderHeader, initRdr2Page } from './site.js?v=20260623-rdr2-autoselect-fix3';
+  renderHeader('rdr2');
+  initRdr2Page('rdr2');
+
+</script>
+</body>
+</html>
